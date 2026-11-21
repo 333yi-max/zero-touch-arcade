@@ -1,0 +1,26 @@
+{
+  "site": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone/",
+  "mobile": {
+    "total": 3,
+    "external": 0,
+    "externalUrls": [],
+    "pageRequests": 3,
+    "storage": {
+      "ls": 0,
+      "ss": 0,
+      "title": "零触控游乐场 · 不用手，也能玩三分钟",
+      "buttons": [
+        "开始体验需要摄像头 · 约 30 秒校准",
+        "演示模式不用摄像头，看虚拟玩家怎么玩",
+        "看 60 秒视频约 60 秒"
+      ],
+      "vw": 375,
+      "scrollW": 375
+    }
+  },
+  "desktop": {
+    "total": 3,
+    "external": 0,
+    "externalUrls": []
+  }
+}

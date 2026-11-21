@@ -1,0 +1,28 @@
+{
+  "url": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone/",
+  "capturedAt": "2026-11-21T17:14:15.208Z",
+  "browser": "Google Chrome stable, --incognito, throwaway profile, DevTools undocked window",
+  "totalRequests": 3,
+  "externalRequestCount": 0,
+  "requests": [
+    {
+      "url": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone/",
+      "type": "document",
+      "status": 200
+    },
+    {
+      "url": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone/assets/index-BfiAKp--.js",
+      "type": "script",
+      "status": 200
+    },
+    {
+      "url": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone/assets/index-BKgTv4P5.css",
+      "type": "stylesheet",
+      "status": 200
+    }
+  ],
+  "external": [],
+  "cookies": 0,
+  "localStorageKeys": 0,
+  "sessionStorageKeys": 0
+}

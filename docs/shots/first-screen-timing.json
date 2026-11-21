@@ -1,0 +1,9 @@
+{
+  "dns": 0,
+  "ttfb": 81,
+  "domContentLoaded": 240,
+  "load": 253,
+  "fcp": 248,
+  "transferSize": 58052,
+  "encodedBodySize": 57752
+}
