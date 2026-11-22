@@ -29,9 +29,9 @@ npm run build      # 先 tsc --noEmit 做类型检查，再产出 dist/
 npm run preview    # 本地预览构建产物
 ```
 
-## 当前状态：骨架（P0）
+## 当前状态：Day 3，真实摄像头已接通
 
-只做完了页面骨架与流程状态机，**没有接摄像头、没有游戏逻辑**。
+骨架、虚拟玩家、真实摄像头输入都在了；**还没有的是校准 UI 与游戏逻辑**（引擎输出的 `confirm` / `pause` 目前只驱动演示页的方块变绿和「已暂停」遮罩）。
 
 状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → game → result`：
 
@@ -39,7 +39,7 @@ npm run preview    # 本地预览构建产物
 | --- | --- | --- | --- |
 | `choose_camera` | start | calibration | 开始体验（需要摄像头） |
 | `choose_demo` | start | game | 演示模式，跳过校准 |
-| `calibration_finished` | calibration | game | 校准完成 |
+| `calibration_finished` | calibration | game | 校准完成 → `mode='camera'` |
 | `calibration_skipped` | calibration | game | 「跳过（演示模式）」 |
 | `game_finished` | game | result | 带上分数 |
 | `replay` | result | game | 保持上次的输入模式 |
@@ -48,9 +48,13 @@ npm run preview    # 本地预览构建产物
 页面：
 
 - `StartScreen` — 大标题 + 副标题 + 三个入口（视频按钮目前是占位提示）
-- `CalibrationScreen` — 3 步占位（正对 / 向左 / 向右）、进度条、跳过
-- `GameScreen` — 一块空 Canvas + 顶部返回
+- `CalibrationScreen` — 3 步占位（正对 / 向左 / 向右）、进度条、跳过；**未接真实采样**
+- `GameScreen` — `mode='demo'` 走 `ScriptedSource` 画方块；`mode='camera'` 走 `CameraSource` 显示镜像预览 + 关键点叠加
 - `ResultScreen` — 分数占位 + 分享卡占位
+
+输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托失败自动回退 CPU，切后台释放摄像头轨道）。
+
+已知未验：真人镜头前的 yaw/pitch 实际量级、自然眨眼能否撑满 `blinkHoldMs: 180`。这两项要人坐在镜头前按 `D` 开调试面板量。
 
 无障碍相关的既定约束：按钮最小 64px 高、深底高对比配色、焦点环 3px、`prefers-reduced-motion` 降级、手机竖屏 375px 可用。
 
@@ -69,7 +73,29 @@ app/
    └─ components/          # 四个屏幕 + Button + TopBar
 ```
 
-后续会加：`src/input/`（输入源抽象 + 手势引擎）、`src/games/`、`src/lib/`、`public/wasm`、`public/models`。
+Day 2 加了：`src/input/`（引擎 + 输入源抽象 + 虚拟玩家）、`src/hooks/useGesture.ts`、`tests/`。
+Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`（关键点→RawFrame 纯函数）、`src/components/CameraStage.tsx`、`DebugPanel.tsx`、`public/wasm`、`public/models`。
+
+## 摄像头与模型资源
+
+- `@mediapipe/tasks-vision` 锁 **0.10.14**（`dependencies` 里不带 `^`/`~`，npm 最新已经是 1.x，故意不回退）。
+- `public/wasm/` 是从 `node_modules/@mediapipe/tasks-vision/wasm/` 原样拷来的四个文件，版本和 JS 严格一致；**不走 CDN**，否则「零外部请求」那条隐私证据就不成立了。重新安装后这样刷新：
+  `cp node_modules/@mediapipe/tasks-vision/wasm/* public/wasm/`
+- `public/models/face_landmarker.task` 是官方 float16/1（3.76 MB）：
+  `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`
+- 两者的路径一律经 `import.meta.env.BASE_URL` 拼接再对 `document.baseURI` 取绝对地址（`cameraSource.ts` 的 `asset()`）。MediaPipe 是把文件名直接接在 wasm 目录后面的，尾斜杠丢了就是 404。
+- 构建后 `dist/` 约 23 MB，其中 22 MB 是 wasm 和模型；发布体积以此为准。
+
+## 调试面板
+
+按 `D` 开合（默认隐藏）。含镜像预览开关（同步切 `mirrorX`，且**不重启输入源**）、关键点叠加开关、yaw/pitch/blinkL/blinkR/jaw 实时值、cursorX、engine 事件时间戳、delegate。
+镜像的正确对应关系已实测：镜像预览开 → `mirrorX=-1`，被摄者向左转头光标向左；关掉镜像 → `mirrorX=1`，方向跟着预览走。演示模式下 40 次采样符号一致率 31/31。
+
+## 下一步
+
+1. 真人面前验一次：转头/点头/眨眼的实际 yaw、pitch 量级，以及自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能需要放宽，放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。
+2. 校准页接真实采样与自适应量程（`calibrateNeutral` / `setRangeFromOffsets` 已在引擎里，UI 未接）。
+3. 游戏本体：光标命中判定与计分。
 
 ## 部署到 Qoder Sites
 
@@ -95,10 +121,3 @@ app/
 
 
 平台保留路径不要使用：`/api` `/internal` `/__qoder_auth` `/__qoder_internal` `/functions` `/storage` `/rest/v1` `/supabase`。
-
-## 下一步
-
-1. 把 `reference/` 的四个文件搬进 `src/input/`（去掉导入的 `.ts` 后缀，`node:assert` 转 Vitest），跑绿 13 条用例。
-2. 补 `scriptedSource.ts` + `useGesture` + demo 方块页，让演示模式的方块随虚拟输入左右移动。
-3. 装 `@mediapipe/tasks-vision@0.10.14`，接 `CameraSource`，拷 wasm 与 `face_landmarker.task` 到 `public/`。
-4. 校准页接真实采样与自适应量程。

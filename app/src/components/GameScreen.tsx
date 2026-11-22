@@ -1,21 +1,96 @@
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { useGesture } from '../hooks/useGesture';
+import { CameraSource } from '../input/cameraSource';
+import type { GestureEvent } from '../input/types';
 import { ScriptedSource } from '../input/scriptedSource';
 import type { Mode } from '../state/machine';
 import Button from './Button';
+import CameraStage, { CameraProblemCard } from './CameraStage';
+import DebugPanel from './DebugPanel';
 import TopBar from './TopBar';
 
 interface GameScreenProps {
   mode: Mode;
   onBack: () => void;
   onFinish: (score: number) => void;
+  onDemo: () => void;
 }
 
 const CONFIRM_FLASH_MS = 180;
 const BOX_SIZE = 96;
 const TRACK_MARGIN = 32;
+const EVENT_LOG_SIZE = 8;
 
-export default function GameScreen({ mode, onBack, onFinish }: GameScreenProps) {
+interface DemoScene {
+  cursorX: number;
+  greenUntil: number;
+}
+
+export default function GameScreen({ mode, onBack, onFinish, onDemo }: GameScreenProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const scriptedRef = useRef<ScriptedSource | null>(null);
+  const sceneRef = useRef<DemoScene>({ cursorX: 0, greenUntil: 0 });
+
+  const [cameraSource, setCameraSource] = useState<CameraSource | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [mirrorX, setMirrorX] = useState<1 | -1>(-1);
+  const [overlay, setOverlay] = useState(true);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [eventLog, setEventLog] = useState<{ type: GestureEvent; at: number }[]>([]);
+
+  useEffect(() => {
+    if (mode !== 'camera') return;
+    const video = videoRef.current;
+    if (!video) return;
+    const source = new CameraSource(video, (error) => setResumeError(error.message));
+    setCameraSource(source);
+    return () => {
+      setCameraSource(null);
+      source.dispose();
+    };
+  }, [mode]);
+
+  if (mode === 'demo' && scriptedRef.current === null) {
+    scriptedRef.current = new ScriptedSource();
+  }
+
+  const { state, events, frame, error } = useGesture(
+    mode === 'demo' ? scriptedRef.current : cameraSource,
+    mirrorX,
+  );
+
+  useEffect(() => {
+    sceneRef.current.cursorX = state.cursorX;
+  }, [state.cursorX]);
+
+  useEffect(() => {
+    if (events.length === 0) return;
+    if (events.includes('confirm')) {
+      sceneRef.current.greenUntil = performance.now() + CONFIRM_FLASH_MS;
+    }
+    if (events.includes('pause')) setPaused((p) => !p);
+    setEventLog((log) =>
+      [...events.map((type) => ({ type, at: Date.now() })), ...log].slice(0, EVENT_LOG_SIZE),
+    );
+  }, [events]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.key.toLowerCase() !== 'd') return;
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      if (target && /^(input|textarea|select)$/i.test(target.tagName)) return;
+      event.preventDefault();
+      setDebugOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const problem = error ?? resumeError;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <TopBar
@@ -34,34 +109,57 @@ export default function GameScreen({ mode, onBack, onFinish }: GameScreenProps) 
         </p>
       ) : null}
 
-      {mode === 'demo' ? <DemoBoard /> : <CameraPlaceholder />}
+      {mode === 'camera' && problem ? (
+        <CameraProblemCard message={problem} onDemo={onDemo} />
+      ) : null}
+
+      {mode === 'demo' ? (
+        <DemoCanvas sceneRef={sceneRef} paused={paused} />
+      ) : (
+        <CameraStage
+          videoRef={videoRef}
+          source={cameraSource}
+          mirrored={mirrorX === -1}
+          overlay={overlay}
+          paused={paused}
+          frame={frame}
+          onDemo={onDemo}
+        />
+      )}
+
+      <p className="text-base text-dim">
+        按 D 打开调试面板
+        {paused ? ' · 已暂停，张嘴放开后再按一次' : ''}
+      </p>
 
       <Button variant="secondary" onClick={() => onFinish(0)} hint="占位入口，用于走通流程">
         结束并查看结果
       </Button>
+
+      {debugOpen ? (
+        <DebugPanel
+          frame={frame}
+          state={state}
+          eventLog={eventLog}
+          mirrorX={mirrorX}
+          onMirrorXChange={setMirrorX}
+          overlay={overlay}
+          onOverlayChange={setOverlay}
+          delegate={cameraSource?.delegate ?? null}
+          onClose={() => setDebugOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function DemoBoard() {
-  const sourceRef = useRef<ScriptedSource | null>(null);
-  if (sourceRef.current === null) sourceRef.current = new ScriptedSource();
-  const { state, events } = useGesture(sourceRef.current);
+interface DemoCanvasProps {
+  sceneRef: RefObject<DemoScene>;
+  paused: boolean;
+}
 
+function DemoCanvas({ sceneRef, paused }: DemoCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef({ cursorX: 0, greenUntil: 0 });
-  const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    sceneRef.current.cursorX = state.cursorX;
-  }, [state.cursorX]);
-
-  useEffect(() => {
-    if (events.includes('confirm')) {
-      sceneRef.current.greenUntil = performance.now() + CONFIRM_FLASH_MS;
-    }
-    if (events.includes('pause')) setPaused((p) => !p);
-  }, [events]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -69,6 +167,7 @@ function DemoBoard() {
 
     let raf = 0;
     const draw = () => {
+      const scene = sceneRef.current;
       const box = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       const width = Math.max(1, Math.round(box.width * dpr));
@@ -79,16 +178,16 @@ function DemoBoard() {
       }
 
       const ctx = canvas.getContext('2d');
-      if (ctx) {
+      if (ctx && scene) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        paintDemo(ctx, box.width, box.height, sceneRef.current, performance.now());
+        paintDemo(ctx, box.width, box.height, scene, performance.now());
       }
       raf = requestAnimationFrame(draw);
     };
 
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [sceneRef]);
 
   return (
     <div className="relative h-[60vh] w-full sm:h-[68vh]">
@@ -114,9 +213,9 @@ function paintDemo(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  scene: { cursorX: number; greenUntil: number },
+  scene: DemoScene,
   now: number,
-) {
+): void {
   ctx.fillStyle = '#06080f';
   ctx.fillRect(0, 0, width, height);
 
@@ -135,52 +234,4 @@ function paintDemo(
 
   ctx.fillStyle = now < scene.greenUntil ? '#22c55e' : '#ffd60a';
   ctx.fillRect(x, y, size, size);
-}
-
-function CameraPlaceholder() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const draw = () => {
-      const box = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.round(box.width * dpr));
-      canvas.height = Math.max(1, Math.round(box.height * dpr));
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.scale(dpr, dpr);
-
-      ctx.fillStyle = '#06080f';
-      ctx.fillRect(0, 0, box.width, box.height);
-
-      ctx.strokeStyle = '#2a3550';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([12, 12]);
-      ctx.strokeRect(16, 16, box.width - 32, box.height - 32);
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = '#c3cde4';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = '600 22px system-ui, "Microsoft YaHei", sans-serif';
-      ctx.fillText('摄像头画面占位 · 明天接入', box.width / 2, box.height / 2);
-    };
-
-    draw();
-    window.addEventListener('resize', draw);
-    return () => window.removeEventListener('resize', draw);
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      role="img"
-      aria-label="摄像头游戏画面占位，玩法将在下一阶段接入"
-      className="h-[60vh] w-full rounded-card border-2 border-edge bg-page sm:h-[68vh]"
-    />
-  );
 }

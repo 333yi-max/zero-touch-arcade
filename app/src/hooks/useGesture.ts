@@ -1,31 +1,61 @@
 import { useEffect, useRef, useState } from 'react';
+import type { GestureConfig } from '../input/config';
 import { GestureEngine } from '../input/gestureEngine';
-import type { GestureEvent, InputSource, InputState } from '../input/types';
+import type { GestureEvent, InputSource, InputState, RawFrame } from '../input/types';
 
 const NEUTRAL_STATE: InputState = { cursorX: 0, confirm: false, pause: false };
 
+export interface GestureOutput {
+  state: InputState;
+  events: GestureEvent[];
+  /** 最近一帧原始输入，调试面板用。 */
+  frame: RawFrame | null;
+  error: string | null;
+}
+
 /**
- * 把 InputSource 的帧流接到 GestureEngine 上。
- * 引擎实例挂在 ref 上，StrictMode 的双次挂载只会重建一次订阅，不会留下两个 RAF 循环。
+ * InputSource + GestureEngine 封成 hook。
+ *
+ * 镜像开关换的是引擎实例，不是输入源：换 mirrorX 时用旧量程建新引擎，
+ * 摄像头不会因此重新申请权限。卸载时 stop()，StrictMode 双次挂载只留一个循环。
  */
-export function useGesture(source: InputSource): { state: InputState; events: GestureEvent[] } {
+export function useGesture(
+  source: InputSource | null,
+  mirrorX: GestureConfig['mirrorX'] = 1,
+): GestureOutput {
   const engineRef = useRef<GestureEngine | null>(null);
+  if (engineRef.current === null) engineRef.current = new GestureEngine({ mirrorX });
+
   const [state, setState] = useState<InputState>(NEUTRAL_STATE);
   const [events, setEvents] = useState<GestureEvent[]>([]);
+  const [frame, setFrame] = useState<RawFrame | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (engineRef.current === null) engineRef.current = new GestureEngine();
-    const engine = engineRef.current;
+    const previous = engineRef.current;
+    const engine = new GestureEngine({ mirrorX });
+    if (previous) engine.setCalibration(previous.getCalibration());
+    engineRef.current = engine;
+  }, [mirrorX]);
+
+  useEffect(() => {
+    if (!source) return;
+    setError(null);
 
     let active = true;
-    source.onFrame((frame) => {
+    source.onFrame((raw) => {
       if (!active) return;
-      const result = engine.update(frame);
+      const engine = engineRef.current;
+      if (!engine) return;
+      const result = engine.update(raw);
+      setFrame(raw);
       setState(result.state);
       setEvents(result.events);
     });
-
-    void source.start();
+    source.start().catch((reason: unknown) => {
+      if (!active) return;
+      setError(reason instanceof Error ? reason.message : String(reason));
+    });
 
     return () => {
       active = false;
@@ -33,5 +63,5 @@ export function useGesture(source: InputSource): { state: InputState; events: Ge
     };
   }, [source]);
 
-  return { state, events };
+  return { state, events, frame, error };
 }

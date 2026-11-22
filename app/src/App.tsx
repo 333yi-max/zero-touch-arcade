@@ -31,6 +31,7 @@ export default function App() {
             mode={state.mode}
             onBack={() => send({ type: 'home' })}
             onFinish={(score) => send({ type: 'game_finished', score })}
+            onDemo={() => send({ type: 'choose_demo' })}
           />
         ) : null}
 
