@@ -1,86 +1,207 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useCalibration } from '../hooks/useCalibration';
+import { STEP_COPY } from '../calibration/steps';
+import { currentStep } from '../calibration/sequencer';
+import type { CalibrationResult } from '../calibration/result';
 import Button from './Button';
+import CameraStage, { CameraProblemCard } from './CameraStage';
+import OffsetBar from './OffsetBar';
+import ProgressRing from './ProgressRing';
 import TopBar from './TopBar';
 
 interface CalibrationScreenProps {
   onBack: () => void;
-  onFinish: () => void;
-  onSkip: () => void;
+  /** null = 用默认值继续（不写盘）；非 null = 这次真采到了数 */
+  onFinish: (result: CalibrationResult | null) => void;
+  onDemo: () => void;
 }
 
-const STEPS = [
-  { title: '第 1 步 · 正对屏幕', detail: '把脸放在取景框中间，自然看镜头，保持 2 秒。' },
-  { title: '第 2 步 · 慢慢向左转头', detail: '转到你觉得舒服的最大幅度就行，不用勉强。' },
-  { title: '第 3 步 · 慢慢向右转头', detail: '系统用这两步算出你的活动范围，活动小也能玩。' },
-];
+/** 摘要停够读三行数字的时间，再自己走进游戏。 */
+const AUTO_ENTER_SECONDS = 8;
 
-export default function CalibrationScreen({ onBack, onFinish, onSkip }: CalibrationScreenProps) {
-  const [index, setIndex] = useState(0);
-  const isLast = index === STEPS.length - 1;
-  const step = STEPS[index];
+export default function CalibrationScreen({
+  onBack,
+  onFinish,
+  onDemo,
+}: CalibrationScreenProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const {
+    state,
+    result,
+    usedDefaults,
+    live,
+    progress,
+    blinksLeft,
+    frame,
+    source,
+    error,
+    voiceEnabled,
+    toggleVoice,
+    redoStep,
+    useDefaults,
+    restart,
+  } = useCalibration(videoRef);
+
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_ENTER_SECONDS);
+  const sentRef = useRef(false);
+
+  useEffect(() => {
+    if (usedDefaults) onFinish(null);
+  }, [usedDefaults, onFinish]);
+
+  useEffect(() => {
+    if (result === null) return;
+    const id = window.setInterval(() => {
+      setSecondsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [result]);
+
+  useEffect(() => {
+    if (result !== null && secondsLeft === 0) enter(result);
+  }, [result, secondsLeft]);
+
+  function enter(r: CalibrationResult | null): void {
+    if (sentRef.current) return;
+    sentRef.current = true;
+    onFinish(r);
+  }
+
+  function recalibrate(): void {
+    sentRef.current = false;
+    setSecondsLeft(AUTO_ENTER_SECONDS);
+    restart();
+  }
+
+  const { total } = currentStep(state);
+  const copy = STEP_COPY[state.step];
+  const givingUp = state.status === 'giveUp';
+
+  // 「用默认值继续」和「跳过」没有数字可看，直接走
+  if (result !== null) {
+    return (
+      <div className="flex flex-col gap-6">
+        <TopBar title="校准完成" onBack={onBack} />
+        <Summary result={result} />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button onClick={() => enter(result)} hint={`${secondsLeft} 秒后自动进入`}>
+            立即进入游戏
+          </Button>
+          <Button variant="secondary" onClick={recalibrate} hint="换个坐姿、换个人，再来一遍">
+            重新校准
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <TopBar title="30 秒校准" onBack={onBack} />
 
-      <div
-        role="progressbar"
-        aria-label="校准进度"
-        aria-valuemin={1}
-        aria-valuemax={STEPS.length}
-        aria-valuenow={index + 1}
-        aria-valuetext={`第 ${index + 1} 步，共 ${STEPS.length} 步`}
-        className="flex flex-col gap-2"
-      >
-        <div className="flex gap-2">
-          {STEPS.map((s, i) => (
-            <span
-              key={s.title}
-              aria-hidden="true"
-              className={`h-3 flex-1 rounded-full ${i <= index ? 'bg-accent' : 'bg-edge'}`}
-            />
-          ))}
+      {error ? (
+        <CameraProblemCard message={error} onDemo={onDemo} />
+      ) : (
+        <CameraStage
+          videoRef={videoRef}
+          source={source}
+          mirrored
+          overlay
+          paused={false}
+          frame={frame}
+          onDemo={onDemo}
+        />
+      )}
+
+      <div className="flex items-center gap-4">
+        <ProgressRing
+          value={progress}
+          label={`${copy.title}，共 ${total} 步`}
+          icon={copy.icon}
+        />
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold">{copy.title}</h2>
+          <p className="text-lg text-dim">{copy.detail}</p>
+          <p className="text-base text-dim">{copy.hint}</p>
         </div>
-        <p className="text-lg font-semibold text-dim">
-          第 {index + 1} / {STEPS.length} 步
-        </p>
       </div>
 
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-card border-2 border-dashed border-edge bg-card">
-        <p className="px-6 text-center text-lg text-dim">
-          摄像头预览位
-          <br />
-          <span className="text-base">（骨架阶段尚未接入摄像头）</span>
-        </p>
-      </div>
+      <p role="status" aria-live="polite" className="sr-only">
+        {`${copy.title}（共 ${total} 步）。${copy.detail}`}
+        {state.attempt === 2 ? '没感觉到，这一步自动重来一次。' : ''}
+      </p>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-bold">{step.title}</h2>
-        <p className="text-lg text-dim">{step.detail}</p>
-      </div>
+      {state.step === 'confirm' ? (
+        <p className="text-lg font-semibold">
+          还差 {blinksLeft} 次眨眼
+          <span className="ml-2 text-base text-dim">眨不动就按空格键，同样算确认。</span>
+        </p>
+      ) : (
+        <OffsetBar axis={live.axis} offset={live.offset} target={live.target} capturing={live.capturing} />
+      )}
+
+      {givingUp ? (
+        <div className="flex flex-col gap-3 rounded-card border-2 border-edge bg-card p-5">
+          <h3 className="text-xl font-bold">{STEP_COPY.giveUp.title}</h3>
+          <p className="text-lg text-dim">{STEP_COPY.giveUp.detail}</p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button onClick={redoStep} hint="这一步重来，其它步不重做">
+              重做这一步
+            </Button>
+            <Button variant="secondary" onClick={useDefaults} hint="不保存任何东西">
+              用默认值继续
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           variant="secondary"
-          disabled={index === 0}
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          onClick={toggleVoice}
+          hint={voiceEnabled ? '关掉后只剩屏幕文字' : '播报当前步骤的指令'}
         >
-          上一步
+          语音播报：{voiceEnabled ? '开' : '关'}
         </Button>
-        {isLast ? (
-          <Button onClick={onFinish} hint="骨架阶段为占位，接入摄像头后由眨眼确认">
-            完成校准
-          </Button>
-        ) : (
-          <Button onClick={() => setIndex((i) => Math.min(STEPS.length - 1, i + 1))}>
-            下一步
-          </Button>
-        )}
+        <Button variant="secondary" onClick={useDefaults} hint="用默认量程进游戏，不需要摄像头也行">
+          跳过，使用默认值
+        </Button>
       </div>
-
-      <Button variant="secondary" onClick={onSkip} hint="直接进入游戏，不需要摄像头">
-        跳过（演示模式）
-      </Button>
     </div>
+  );
+}
+
+function Summary({ result }: { result: CalibrationResult }) {
+  return (
+    <section
+      aria-label="校准结果"
+      className="flex flex-col gap-3 rounded-card border-2 border-edge bg-card p-5"
+    >
+      <h2 className="text-2xl font-bold">这次用到的量程</h2>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-lg sm:grid-cols-3">
+        <dt className="text-dim">yawRange</dt>
+        <dd>{result.yawRange.toFixed(3)}</dd>
+        <dt className="text-dim">pitchRange</dt>
+        <dd>{result.pitchRange.toFixed(3)}</dd>
+        <dt className="text-dim">灵敏度</dt>
+        <dd>{result.sensitivity}%</dd>
+      </dl>
+      {result.yawClampedToMax ? (
+        <p className="text-lg font-semibold text-accent">
+          转头幅度超过上限，已自动压缩灵敏度 —— 再转也是同一位置，不用勉强。
+        </p>
+      ) : null}
+      {result.yawClampedToMin ? (
+        <p className="text-lg font-semibold text-accent">
+          活动幅度小，已自动放大灵敏度：轻轻一转就能走满全屏。
+        </p>
+      ) : null}
+      {result.pitchCapped ? (
+        <p className="text-lg text-dim">点头幅度按上限截到 {result.pitchRange.toFixed(2)}。</p>
+      ) : null}
+      <p className="text-base text-dim">
+        只存了这几个数字，没有画面、没有照片，也没有上传任何东西。
+      </p>
+    </section>
   );
 }

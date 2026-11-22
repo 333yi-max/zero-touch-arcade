@@ -1,5 +1,6 @@
 import type { GestureConfig } from '../input/config';
-import type { GestureEvent, InputState, RawFrame } from '../input/types';
+import { DEFAULT_CALIBRATION } from '../input/gestureEngine';
+import type { Calibration, GestureEvent, InputState, RawFrame } from '../input/types';
 import type { Peaks } from '../hooks/useDebugTrace';
 
 interface DebugPanelProps {
@@ -11,6 +12,7 @@ interface DebugPanelProps {
   overlay: boolean;
   onOverlayChange: (value: boolean) => void;
   delegate: 'GPU' | 'CPU' | null;
+  calibration: Required<Calibration>;
   peaks: Peaks;
   rows: number;
   onResetPeaks: () => void;
@@ -19,6 +21,16 @@ interface DebugPanelProps {
 }
 
 const num = (value: number): string => value.toFixed(3);
+
+/** 一眼看出这次玩的是校准过的量程还是引擎默认值。 */
+function isDefaultRange(c: Required<Calibration>): boolean {
+  return (
+    c.range === DEFAULT_CALIBRATION.range &&
+    c.pitchRange === DEFAULT_CALIBRATION.pitchRange &&
+    c.yawNeutral === 0 &&
+    c.pitchNeutral === 0
+  );
+}
 
 function clock(at: number): string {
   const d = new Date(at);
@@ -81,6 +93,7 @@ export default function DebugPanel({
   overlay,
   onOverlayChange,
   delegate,
+  calibration,
   peaks,
   rows,
   onResetPeaks,
@@ -143,6 +156,25 @@ export default function DebugPanel({
           ) : '—'}
         </dd>
       </dl>
+
+      <div className="flex flex-col gap-1">
+        <h3 className="flex items-center gap-2 font-bold">
+          生效量程
+          <span className="rounded-full border-2 border-edge px-2 py-0.5 text-xs font-normal text-dim">
+            {isDefaultRange(calibration) ? '默认' : '已校准'}
+          </span>
+        </h3>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono">
+          <dt className="text-dim">yawRange</dt>
+          <dd className="text-right">{num(calibration.range)}</dd>
+          <dt className="text-dim">pitchRange</dt>
+          <dd className="text-right">{num(calibration.pitchRange)}</dd>
+          <dt className="text-dim">中性 yaw</dt>
+          <dd className="text-right">{num(calibration.yawNeutral)}</dd>
+          <dt className="text-dim">中性 pitch</dt>
+          <dd className="text-right">{num(calibration.pitchNeutral)}</dd>
+        </dl>
+      </div>
 
       <div className="flex flex-col gap-1">
         <h3 className="font-bold">峰值保持（本次会话）</h3>

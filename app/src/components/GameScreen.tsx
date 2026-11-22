@@ -3,7 +3,7 @@ import type { RefObject } from 'react';
 import { useDebugTrace } from '../hooks/useDebugTrace';
 import { useGesture } from '../hooks/useGesture';
 import { CameraSource } from '../input/cameraSource';
-import type { GestureEvent } from '../input/types';
+import type { Calibration, GestureEvent } from '../input/types';
 import { ScriptedSource } from '../input/scriptedSource';
 import type { Mode } from '../state/machine';
 import Button from './Button';
@@ -13,6 +13,8 @@ import TopBar from './TopBar';
 
 interface GameScreenProps {
   mode: Mode;
+  /** 校准值只在摄像头模式下生效；演示模式恒用引擎默认量程。 */
+  calibration?: Required<Calibration> | null;
   onBack: () => void;
   onFinish: (score: number) => void;
   onDemo: () => void;
@@ -28,7 +30,13 @@ interface DemoScene {
   greenUntil: number;
 }
 
-export default function GameScreen({ mode, onBack, onFinish, onDemo }: GameScreenProps) {
+export default function GameScreen({
+  mode,
+  calibration,
+  onBack,
+  onFinish,
+  onDemo,
+}: GameScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const scriptedRef = useRef<ScriptedSource | null>(null);
   const sceneRef = useRef<DemoScene>({ cursorX: 0, greenUntil: 0 });
@@ -57,10 +65,13 @@ export default function GameScreen({ mode, onBack, onFinish, onDemo }: GameScree
     scriptedRef.current = new ScriptedSource();
   }
 
-  const { state, events, frame, error } = useGesture(
+  const gesture = useGesture(
     mode === 'demo' ? scriptedRef.current : cameraSource,
     mirrorX,
+    // 虚拟玩家不能继承真人的量程，所以演示模式恒传 null
+    mode === 'camera' ? (calibration ?? null) : null,
   );
+  const { state, events, frame, error } = gesture;
 
   useEffect(() => {
     sceneRef.current.cursorX = state.cursorX;
@@ -148,6 +159,7 @@ export default function GameScreen({ mode, onBack, onFinish, onDemo }: GameScree
           overlay={overlay}
           onOverlayChange={setOverlay}
           delegate={cameraSource?.delegate ?? null}
+          calibration={gesture.calibration}
           peaks={trace.peaks}
           rows={trace.rows}
           onResetPeaks={trace.resetPeaks}

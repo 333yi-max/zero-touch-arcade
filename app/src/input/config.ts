@@ -3,6 +3,8 @@ export type GestureConfig = {
   deadzone: number;
   rangeMin: number;
   rangeMax: number;
+  pitchRangeMin: number;
+  pitchRangeMax: number;
   nodTriggerRatio: number;
   nodRearmRatio: number;
   nodHoldMs: number;
@@ -23,9 +25,12 @@ export const DEFAULT_CONFIG: GestureConfig = {
   emaAlpha: 0.35,
   // 光标死区
   deadzone: 0.05,
-  // 自适应量程的上下限
+  // 自适应量程的上下限（左右转头）
   rangeMin: 0.08,
   rangeMax: 0.22,
+  // 点头量程独立：真人 yaw 舒适峰值 0.36~0.40，pitch 只有 0.19，共用一份必然顾此失彼
+  pitchRangeMin: 0.06,
+  pitchRangeMax: 0.18,
   // 点头：达到量程的 55% 触发，回落到 25% 才重新武装
   nodTriggerRatio: 0.55,
   nodRearmRatio: 0.25,

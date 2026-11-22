@@ -1,19 +1,54 @@
-import { useReducer } from 'react';
+import { useReducer, useState } from 'react';
 import CalibrationScreen from './components/CalibrationScreen';
 import GameScreen from './components/GameScreen';
 import ResultScreen from './components/ResultScreen';
 import StartScreen from './components/StartScreen';
+import { toEngineCalibration, type CalibrationResult } from './calibration/result';
+import {
+  fromStoredCalibration,
+  readStoredCalibration,
+  toStoredCalibration,
+  writeStoredCalibration,
+} from './calibration/storage';
+import type { Calibration } from './input/types';
 import { initialState, next } from './state/machine';
 
 export default function App() {
-  const [state, send] = useReducer(next, initialState);
+  // 开机读一次：本机存过校准值就说明不用再花 30 秒
+  const [boot] = useState(() => {
+    const stored = readStoredCalibration();
+    return { calibration: stored === null ? null : fromStoredCalibration(stored), has: stored !== null };
+  });
+  const [state, send] = useReducer(next, initialState, (s) => ({ ...s, calibrated: boot.has }));
+  const [calibration, setCalibration] = useState<Required<Calibration> | null>(boot.calibration);
+  const [saveNotice, setSaveNotice] = useState('');
+
+  const finishCalibration = (result: CalibrationResult | null): void => {
+    if (result === null) {
+      // 「跳过，使用默认值」和失败后的「用默认值继续」同一条路：不写盘
+      setCalibration(null);
+      setSaveNotice('');
+      send({ type: 'calibration_skipped' });
+      return;
+    }
+    setCalibration(toEngineCalibration(result));
+    // 私密模式 / 存储被禁用时写不进去，但这次会话照样用得上，只是下次要重校
+    setSaveNotice(
+      writeStoredCalibration(toStoredCalibration(result, Date.now()))
+        ? ''
+        : '校准这次能用，但本机没能保存 —— 下次打开需要重新校准。',
+    );
+    send({ type: 'calibration_finished' });
+  };
 
   return (
     <div className="flex min-h-dvh flex-col">
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-8 sm:py-12">
         {state.screen === 'start' ? (
           <StartScreen
+            hasCalibration={state.calibrated}
             onStartCamera={() => send({ type: 'choose_camera' })}
+            onRecalibrate={() => send({ type: 'start_calibration' })}
             onStartDemo={() => send({ type: 'choose_demo' })}
           />
         ) : null}
@@ -21,14 +56,15 @@ export default function App() {
         {state.screen === 'calibration' ? (
           <CalibrationScreen
             onBack={() => send({ type: 'home' })}
-            onFinish={() => send({ type: 'calibration_finished' })}
-            onSkip={() => send({ type: 'calibration_skipped' })}
+            onFinish={finishCalibration}
+            onDemo={() => send({ type: 'choose_demo' })}
           />
         ) : null}
 
         {state.screen === 'game' ? (
           <GameScreen
             mode={state.mode}
+            calibration={calibration}
             onBack={() => send({ type: 'home' })}
             onFinish={(score) => send({ type: 'game_finished', score })}
             onDemo={() => send({ type: 'choose_demo' })}
@@ -42,6 +78,12 @@ export default function App() {
             onReplay={() => send({ type: 'replay' })}
             onHome={() => send({ type: 'home' })}
           />
+        ) : null}
+
+        {saveNotice ? (
+          <p role="status" aria-live="polite" className="mt-6 text-lg font-semibold text-accent">
+            {saveNotice}
+          </p>
         ) : null}
       </main>
 

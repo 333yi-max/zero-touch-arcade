@@ -2,11 +2,19 @@ import { useState } from 'react';
 import Button from './Button';
 
 interface StartScreenProps {
+  /** 本机存过校准值：开始体验就直奔游戏，同时把「重新校准」摆出来 */
+  hasCalibration: boolean;
   onStartCamera: () => void;
+  onRecalibrate: () => void;
   onStartDemo: () => void;
 }
 
-export default function StartScreen({ onStartCamera, onStartDemo }: StartScreenProps) {
+export default function StartScreen({
+  hasCalibration,
+  onStartCamera,
+  onRecalibrate,
+  onStartDemo,
+}: StartScreenProps) {
   const [notice, setNotice] = useState('');
 
   return (
@@ -23,9 +31,17 @@ export default function StartScreen({ onStartCamera, onStartDemo }: StartScreenP
       </div>
 
       <div className="flex flex-col gap-4">
-        <Button onClick={onStartCamera} hint="需要摄像头 · 约 30 秒校准">
+        <Button
+          onClick={onStartCamera}
+          hint={hasCalibration ? '上次已校准 · 直接进入' : '需要摄像头 · 约 30 秒校准'}
+        >
           开始体验
         </Button>
+        {hasCalibration ? (
+          <Button variant="secondary" onClick={onRecalibrate} hint="换个坐姿、换个人，重新量一遍">
+            重新校准
+          </Button>
+        ) : null}
         <Button variant="secondary" onClick={onStartDemo} hint="不用摄像头，看虚拟玩家怎么玩">
           演示模式
         </Button>

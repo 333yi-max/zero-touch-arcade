@@ -145,4 +145,45 @@ describe('GestureEngine', () => {
     const r = run(e, 20, { yaw: 0.1, pitch: 0.05 });
     expect(Math.abs(r.at(-1)!.state.cursorX) < 0.01).toBeTruthy();
   });
+
+  it('pitchRange 钳位：0.19 压到 0.18，0.02 抬到 0.06，取绝对值', () => {
+    const e = new GestureEngine();
+    expect(e.setPitchRangeFromPeak(0.19)).toBe(0.18);
+    expect(e.setPitchRangeFromPeak(-0.19)).toBe(0.18);
+    expect(e.setPitchRangeFromPeak(0.02)).toBe(0.06);
+    expect(e.getCalibration().pitchRange).toBe(0.06);
+  });
+
+  it('yaw 量程 0.22（舒适峰值 0.40 压顶）时，pitch 0.19 仍触发 confirm', () => {
+    now = 0;
+    const e = new GestureEngine();
+    expect(e.setRangeFromOffsets(0.4, -0.4)).toBe(0.22);
+    expect(e.setPitchRangeFromPeak(0.19)).toBe(0.18);
+    const r = run(e, 20, { pitch: 0.19 });
+    expect(eventsOf(r).filter((x) => x === 'confirm').length).toBe(1);
+  });
+
+  it('独立量程才是真修复：pitch 0.08 在共用量程下不触发，拆开后触发', () => {
+    // 共用量程：没有 pitchRange 的老记录退回 range，再被钳到 pitchRangeMax = 0.18 → 阈值 0.099
+    now = 0;
+    const shared = new GestureEngine();
+    shared.setCalibration({ yawNeutral: 0, pitchNeutral: 0, range: 0.22 });
+    expect(shared.getCalibration().pitchRange).toBe(0.18);
+    expect(eventsOf(run(shared, 20, { pitch: 0.08 })).filter((x) => x === 'confirm')).toHaveLength(0);
+
+    // 拆开后：光标仍用 0.22，点头用自己的 0.08
+    now = 0;
+    const split = new GestureEngine();
+    split.setCalibration({ yawNeutral: 0, pitchNeutral: 0, range: 0.22, pitchRange: 0.08 });
+    const r = run(split, 20, { pitch: 0.08 });
+    expect(eventsOf(r).filter((x) => x === 'confirm').length).toBe(1);
+    // 光标量程没被点头带跑
+    expect(split.getCalibration().range).toBe(0.22);
+  });
+
+  it('setRangeFromOffsets 取两边都能走满的较小值，不是较大值', () => {
+    const e = new GestureEngine();
+    // 左边 0.5（会被压顶）、右边只转得到 0.09：量程必须是 0.09，否则右侧永远到不了边缘
+    expect(e.setRangeFromOffsets(-0.5, 0.09)).toBe(0.09);
+  });
 });

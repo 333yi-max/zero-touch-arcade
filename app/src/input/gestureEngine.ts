@@ -7,6 +7,32 @@ import type {
 } from './types';
 
 /**
+ * 没校准过时引擎自带的量程。校准页的「用默认值继续」直接引用这里，
+ * 免得 0.18 这个数在两个地方各写一遍、日后改一边。
+ */
+export const DEFAULT_CALIBRATION: Required<Calibration> = {
+  yawNeutral: 0,
+  pitchNeutral: 0,
+  range: 0.18,
+  pitchRange: 0.18,
+};
+
+/**
+ * 光标偏移 → cursorX 的纯数学，update() 和校准页的实时偏移条共用同一份，
+ * 免得校准界面显示的「能不能走到边缘」和游戏里的实际行为是两套阈值。
+ */
+export function cursorFromDyaw(
+  dyaw: number,
+  range: number,
+  cfg: Pick<GestureConfig, 'deadzone' | 'mirrorX'>,
+): number {
+  if (Math.abs(dyaw) <= cfg.deadzone) return 0;
+  const span = Math.max(1e-6, range - cfg.deadzone);
+  const magnitude = Math.min(1, (Math.abs(dyaw) - cfg.deadzone) / span);
+  return clamp(Math.sign(dyaw) * magnitude * cfg.mirrorX, -1, 1);
+}
+
+/**
  * 手势引擎：纯逻辑，不依赖 DOM / 摄像头。
  * 输入 RawFrame，输出 InputState 和边沿事件。
  *
@@ -14,14 +40,11 @@ import type {
  * 1. 所有阈值相对“校准后的量程”，不是绝对值。
  * 2. 每个手势触发后必须回中/释放才能再次触发，避免连发。
  * 3. 点头和眨眼都映射到 confirm；同一帧只触发一次。
+ * 4. 转头和点头各用一份量程（range / pitchRange）：真人的 yaw 幅度约是 pitch 的两倍。
  */
 export class GestureEngine {
   private cfg: GestureConfig;
-  private calib: Calibration = {
-    yawNeutral: 0,
-    pitchNeutral: 0,
-    range: 0.18,
-  };
+  private calib: Required<Calibration> = { ...DEFAULT_CALIBRATION };
 
   private yawS = 0;
   private pitchS = 0;
@@ -54,30 +77,47 @@ export class GestureEngine {
       y += s.yaw;
       p += s.pitch;
     }
-    this.calib.yawNeutral = y / samples.length;
-    this.calib.pitchNeutral = p / samples.length;
+    this.setNeutral(y / samples.length, p / samples.length);
+  }
+
+  /** 中性位单独设一次；非有限值直接忽略，别让一个 NaN 把量程全带崩。 */
+  setNeutral(yawNeutral: number, pitchNeutral: number): void {
+    if (Number.isFinite(yawNeutral)) this.calib.yawNeutral = yawNeutral;
+    if (Number.isFinite(pitchNeutral)) this.calib.pitchNeutral = pitchNeutral;
   }
 
   /**
-   * 用左右转头的最大偏移设置量程。
-   * 活动范围小的人会被放大到 rangeMin，仍能走满全场。
+   * 用左右转头的最大偏移设置光标量程。
+   * 取两边的**较小值**：一边转不到位，光标就永远走不到那一侧的边缘，
+   * 宁可让另一边提前饱和。活动范围小的人会被放大到 rangeMin，仍能走满全场。
    */
   setRangeFromOffsets(leftOffset: number, rightOffset: number): number {
-    const raw = Math.max(Math.abs(leftOffset), Math.abs(rightOffset));
+    const raw = Math.min(Math.abs(leftOffset), Math.abs(rightOffset));
     this.calib.range = clamp(raw, this.cfg.rangeMin, this.cfg.rangeMax);
     return this.calib.range;
   }
 
-  getCalibration(): Calibration {
+  /** 用点头峰值单独设一份量程；返回钳位后的值。 */
+  setPitchRangeFromPeak(peak: number): number {
+    this.calib.pitchRange = clamp(Math.abs(peak), this.cfg.pitchRangeMin, this.cfg.pitchRangeMax);
+    return this.calib.pitchRange;
+  }
+
+  getCalibration(): Required<Calibration> {
     return { ...this.calib };
   }
 
-  /** 从 localStorage 恢复校准值 */
+  /** 从 localStorage 恢复校准值；老记录没有 pitchRange 时退回 range，行为与拆分前一致。 */
   setCalibration(c: Calibration): void {
     this.calib = {
       yawNeutral: c.yawNeutral,
       pitchNeutral: c.pitchNeutral,
       range: clamp(c.range, this.cfg.rangeMin, this.cfg.rangeMax),
+      pitchRange: clamp(
+        c.pitchRange ?? c.range,
+        this.cfg.pitchRangeMin,
+        this.cfg.pitchRangeMax,
+      ),
     };
   }
 
@@ -118,18 +158,14 @@ export class GestureEngine {
     const dpitch = this.pitchS - this.calib.pitchNeutral;
 
     // ---------- 光标 ----------
-    let cursorX = 0;
-    if (Math.abs(dyaw) > cfg.deadzone) {
-      const span = Math.max(1e-6, this.calib.range - cfg.deadzone);
-      const magnitude = Math.min(1, (Math.abs(dyaw) - cfg.deadzone) / span);
-      cursorX = clamp(Math.sign(dyaw) * magnitude * cfg.mirrorX, -1, 1);
-    }
+    const cursorX = cursorFromDyaw(dyaw, this.calib.range, cfg);
 
     const events: GestureEvent[] = [];
 
     // ---------- 点头 → confirm ----------
-    const nodTrig = this.calib.range * cfg.nodTriggerRatio;
-    const nodRearm = this.calib.range * cfg.nodRearmRatio;
+    // 用 pitchRange 而不是 range：真人点头幅度只有转头的四分之一左右
+    const nodTrig = this.calib.pitchRange * cfg.nodTriggerRatio;
+    const nodRearm = this.calib.pitchRange * cfg.nodRearmRatio;
     if (dpitch > nodTrig) {
       if (this.nodArmed) {
         if (this.nodSince === null) this.nodSince = f.t;

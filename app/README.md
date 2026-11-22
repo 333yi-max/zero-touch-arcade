@@ -29,37 +29,66 @@ npm run build      # 先 tsc --noEmit 做类型检查，再产出 dist/
 npm run preview    # 本地预览构建产物
 ```
 
-## 当前状态：Day 3，真实摄像头已接通
+## 当前状态：Day 4，校准接真 + 独立俯仰量程
 
-骨架、虚拟玩家、真实摄像头输入都在了；**还没有的是校准 UI 与游戏逻辑**（引擎输出的 `confirm` / `pause` 目前只驱动演示页的方块变绿和「已暂停」遮罩）。
+骨架、虚拟玩家、真实摄像头、真实校准都在了；**还没有的是游戏逻辑**（引擎输出的 `confirm` / `pause` 目前只驱动演示页的方块变绿和「已暂停」遮罩）。
 
 状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → game → result`：
 
 | 事件 | 从 | 到 | 说明 |
 | --- | --- | --- | --- |
-| `choose_camera` | start | calibration | 开始体验（需要摄像头） |
-| `choose_demo` | start | game | 演示模式，跳过校准 |
-| `calibration_finished` | calibration | game | 校准完成 → `mode='camera'` |
-| `calibration_skipped` | calibration | game | 「跳过（演示模式）」 |
+| `choose_camera` | start | calibration 或 game | 本机存过校准值就直接进游戏 |
+| `start_calibration` | start | calibration | 「重新校准」入口 |
+| `choose_demo` | start | game | 演示模式（虚拟玩家，量程恒为默认值） |
+| `calibration_finished` | calibration | game | 采到数 → `mode='camera'`，置 `calibrated` 并写盘 |
+| `calibration_skipped` | calibration | game | 「跳过，使用默认值」→ 摄像头模式，**不写盘** |
 | `game_finished` | game | result | 带上分数 |
 | `replay` | result | game | 保持上次的输入模式 |
 | `home` | 任意 | start | 返回按钮 |
 
 页面：
 
-- `StartScreen` — 大标题 + 副标题 + 三个入口（视频按钮目前是占位提示）
-- `CalibrationScreen` — 3 步占位（正对 / 向左 / 向右）、进度条、跳过；**未接真实采样**
+- `StartScreen` — 大标题 + 副标题 + 入口；有存档时「开始体验」直奔游戏，并多出「重新校准」
+- `CalibrationScreen` — 4 步采样 + 眨眼确认，见下节
 - `GameScreen` — `mode='demo'` 走 `ScriptedSource` 画方块；`mode='camera'` 走 `CameraSource` 显示镜像预览 + 关键点叠加
 - `ResultScreen` — 分数占位 + 分享卡占位
 
-输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `buildCsv`（5 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
+测试 70 条：`GestureEngine` 17 + sequencer 14 + storage 9 + `landmarksToFrame` 9 + machine 9 + sampling 7 + `buildCsv` 5。
+输入侧是 `GestureEngine` + `landmarksToFrame` + `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
-已知未验：真人镜头前的 yaw/pitch 实际量级、自然眨眼能否撑满 `blinkHoldMs: 180`。这两项要人坐在镜头前按 `D` 开调试面板量。
+已知未验：真人镜头前的自然眨眼能不能撑满 `blinkHoldMs: 180`。调试面板的峰值保持和 CSV 导出就是为这条准备的。
 `delegate` 一栏只表示哪一种委托请求被 `createFromOptions` 接受：GPU 请求成功后，wasm 内部仍打印
 `INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`，没有证据说明推理跑在 GPU 上。所以界面文案只说「加速：GPU 优先」，
 调试面板写「GPU（已请求，实际后端由 MediaPipe 决定）」，不写「已启用」。
 
 无障碍相关的既定约束：按钮最小 64px 高、深底高对比配色、焦点环 3px、`prefers-reduced-motion` 降级、手机竖屏 375px 可用。
+
+## 校准与量程
+
+真人实测：舒适峰值 yaw 0.36 / 0.40，pitch 0.19，blink 0.65。转头和点头幅度差一倍多，共用一份量程必然顾此失彼，
+所以 `Calibration` 拆成 `range`（光标）和 `pitchRange`（点头）两份，`nodTrig` / `nodRearm` 只认后者。
+
+流程全在 [src/calibration/](src/calibration/)，是纯模块 + 纯 reducer，React 只做外壳 —— 没有 jsdom 也能整条跑一遍：
+
+| 步 | 采什么 | 统计量 | 产出 |
+| --- | --- | --- | --- |
+| 正对 | 45 帧 | mean；极差 > 0.05 判「没定住」 | `yawNeutral` / `pitchNeutral` |
+| 向左 | 30 帧 | 幅度前 15 帧的中位数（带符号） | `leftOffset` |
+| 向右 | 30 帧 | 同上，且必须与向左反号 | `rightOffset` |
+| 点头 | 45 帧 | 幅度前 15 帧的中位数取绝对值 | `nodPeakOffset` |
+| 眨眼两次 | — | 双眼 `min(blinkL,blinkR) > 0.55` 闭合 ≥60ms、两次间隔 ≥120ms | 完成 |
+
+- `yawRange = clamp(min(|左|,|右|), 0.08, 0.22)` —— **取较小边**：一边转不到位，就不能让另一侧走不到边缘。
+- `pitchRange = clamp(点头峰值, 0.06, 0.18)`。
+- 统计量用「幅度前 k 帧的中位数」而不是整窗中位数或 max：整窗中位数会被转过去的过渡段拉低，max 会一头撞上跟踪野值。
+- 某步不合格自动重采一次，再失败就停住，给「重做这一步 / 用默认值继续」；丢脸帧不进缓冲、也不消耗重试次数。
+- 眨眼确认有**空格键**兜底（reducer 只在这一步认这个动作）。
+- 语音播报 zh-CN，默认开、页内可关、选择记进 `zt.settings.v1`；Windows 缺中文声线时退回默认声线念，不哑掉。
+- 完成后显示 `yawRange / pitchRange / 灵敏度`，被压到上限会写明「已自动压缩灵敏度」，8 秒后自动进入游戏。
+
+只往 `zt.calibration.v1` 写 6 个字段（`v / yawNeutral / pitchNeutral / yawRange / pitchRange / savedAt`），
+没有图像、没有帧、没有照片 —— 这条用测试锁死（序列化后的键集合必须恰好是这几个）。版本号编在 key 里，schema 一改旧记录自然失效。
+读到的坏数据一律当「没校准过」（返回 null），绝不猜 `pitchRange = range`。
 
 ## 目录
 
@@ -73,11 +102,14 @@ app/
    ├─ index.css            # Tailwind 入口 + 主题变量
    ├─ App.tsx              # 状态机驱动的屏幕切换
    ├─ state/machine.ts     # 纯函数状态机
-   └─ components/          # 四个屏幕 + Button + TopBar
+   ├─ calibration/         # 校准：steps/sampling/result/sequencer/storage/speech（全纯）
+   ├─ input/               # 引擎 + 输入源 + 关键点→RawFrame
+   └─ components/          # 四个屏幕 + Button + TopBar + CameraStage/DebugPanel/ProgressRing/OffsetBar
 ```
 
 Day 2 加了：`src/input/`（引擎 + 输入源抽象 + 虚拟玩家）、`src/hooks/useGesture.ts`、`tests/`。
 Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`（关键点→RawFrame 纯函数）、`src/components/CameraStage.tsx`、`DebugPanel.tsx`、`public/wasm`、`public/models`。
+Day 4 加了：`src/calibration/`（steps / sampling / result / sequencer / storage / speech 六个纯模块）、`src/hooks/useCalibration.ts`、`src/components/ProgressRing.tsx`、`OffsetBar.tsx`，并重写了 `CalibrationScreen.tsx`。
 
 ## 摄像头与模型资源
 
@@ -108,9 +140,9 @@ Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`�
 
 ## 下一步
 
-1. 真人面前验一次：转头/点头/眨眼的实际 yaw、pitch 量级，以及自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能需要放宽，放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。面板的峰值保持和 CSV 导出就是为这条准备的。
-2. 校准页接真实采样与自适应量程（`calibrateNeutral` / `setRangeFromOffsets` 已在引擎里，UI 未接）。
-3. 游戏本体：光标命中判定与计分。
+1. 真人面前验一次自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能要放宽；放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。转头和点头的量级不用肉眼量了 —— 校准摘要直接把 `yawRange / pitchRange` 写在屏幕上；面板的峰值保持和 CSV 导出留着做逐帧核对。
+2. 游戏本体：光标命中判定与计分。
+3. 校准这套改动还没发布，线上仍是 Day 3 的构建（`assets/index-CoscUwW7.js`）。
 
 ## 部署到 Qoder Sites
 
