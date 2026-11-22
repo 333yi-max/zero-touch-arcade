@@ -55,6 +55,8 @@ npm run preview    # 本地预览构建产物
 输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托失败自动回退 CPU，切后台释放摄像头轨道）。
 
 已知未验：真人镜头前的 yaw/pitch 实际量级、自然眨眼能否撑满 `blinkHoldMs: 180`。这两项要人坐在镜头前按 `D` 开调试面板量。
+`delegate` 一栏同理只能算「GPU 请求被接受」：`createFromOptions('GPU')` 成功后 wasm 内部仍打印
+`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`，没有证据说明推理真的跑在 GPU 上。
 
 无障碍相关的既定约束：按钮最小 64px 高、深底高对比配色、焦点环 3px、`prefers-reduced-motion` 降级、手机竖屏 375px 可用。
 
@@ -103,7 +105,9 @@ Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`�
 ## 部署到 Qoder Sites
 
 **线上地址（公开，免登录）**：<https://zero-touch-arcade-isyzlt2g2ce.qoder.zone>
-`access_mode: public`，2026-11-22 发布。线上产物是 Day-1 骨架构建（`app/.零触控游乐场.qoder.site` 里的 `artifactSha256` 对应那次发布）；Day 2 的手势引擎与演示模式改动已在本地构建，尚未重新发布。
+`access_mode: public`，2026-11-22 发布，同日 20:54 重新发布到 Day 3 收尾构建（`assets/index-B-l08UlS.js`，含真实摄像头与 favicon）。
+线上验收：无痕窗口进 game 页，7 个请求全部同源、零 4xx，控制台只剩 MediaPipe 自己打的
+`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。
 
 站点是 SPA，构建产物是纯静态文件，`vite.config.ts` 已设 `base: './'`，资源走相对路径，因此可以挂在任意子路径下。
 
