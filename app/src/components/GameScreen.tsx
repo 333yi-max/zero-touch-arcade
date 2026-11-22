@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { useDebugTrace } from '../hooks/useDebugTrace';
 import { useGesture } from '../hooks/useGesture';
 import { CameraSource } from '../input/cameraSource';
 import type { GestureEvent } from '../input/types';
@@ -90,6 +91,7 @@ export default function GameScreen({ mode, onBack, onFinish, onDemo }: GameScree
   }, []);
 
   const problem = error ?? resumeError;
+  const trace = useDebugTrace(frame, state.cursorX, events);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
@@ -146,6 +148,10 @@ export default function GameScreen({ mode, onBack, onFinish, onDemo }: GameScree
           overlay={overlay}
           onOverlayChange={setOverlay}
           delegate={cameraSource?.delegate ?? null}
+          peaks={trace.peaks}
+          rows={trace.rows}
+          onResetPeaks={trace.resetPeaks}
+          onExportCsv={trace.exportCsv}
           onClose={() => setDebugOpen(false)}
         />
       ) : null}

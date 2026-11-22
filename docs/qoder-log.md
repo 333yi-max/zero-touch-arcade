@@ -78,6 +78,32 @@ useEffect(() => { /* … */ }, [facePresent]);
 
 ---
 
+## 2026-11-22 · Day 3 收尾：面板加峰值保持和 CSV 导出
+
+**为什么要加**：瞬时值截图抓不到眨眼峰值——真人眨眼只有 100–150ms，而 `blinkHoldMs` 是 180ms，
+「自然眨眼能不能撑满阈值」这条未验项靠肉眼看面板是验不出来的。
+
+**做法**：
+- `useDebugTrace(frame, cursorX, events)` 只做观测，不碰 `gestureEngine.ts` / `config.ts` / `DEFAULT_CONFIG`，判定逻辑一字未改。
+- 峰值和 60 秒环形缓冲放在 `GameScreen` 调 hook、把结果当 props 传给面板。这点是有意的：
+  `DebugPanel` 按 D 关掉就整个卸载，状态放面板里等于每次开关面板都清零。
+- 同一帧可能被 React 重放（StrictMode 对 effect 的双跑），用单调递增的 `frame.t` 去重，`if (frame.t === lastT) return`。
+- `buildCsv(rows)` 抽成纯函数，于是不需要 jsdom 和 testing-library 就能测——保持「零新增依赖」这条不破。
+- CSV 带 UTF-8 BOM + CRLF；`URL.revokeObjectURL` 延后 4 秒，立刻回收在 Safari 上会拿到空文件。
+- 峰值用 `text-ring`（#58c4ff）蓝，瞬时值保持白色，一眼分得开。
+
+**验证**（演示模式跑虚拟玩家，14 秒 = 3 个以上眨眼周期）：
+- 瞬时 `blinkL/blinkR = 0.000` 时，`max blinkL/max blinkR` 仍是 `1.000`，`max |yaw| = 0.160`、`max pitch = 0.140`
+  正好等于虚拟玩家的脉冲幅值；confirm 计数在涨，pause 为 0（脚本没有 jaw 脉冲）。
+- 「重置峰值」后全部归零 ✅。
+- 导出的 CSV 用 Excel 解析器打开：9 列、表头正确、空 `event` 字段保留、BOM 是 `EF BB BF`、CRLF 行尾。
+- 27 条用例全绿（22 条原有 + 5 条 `buildCsv`），控制台无报错。
+
+一个已知代价：演示模式的 `ScriptedSource` 每个 RAF 出一帧，60 秒缓冲在 230Hz 屏上能存到一万多行（几百 KB）。
+摄像头模式检测按 33ms 节流，同样 60 秒只有一千八百行左右，不用为此加限流。
+
+---
+
 ## 2026-11-22 · Day 3：接真实摄像头
 
 - 用 `@mediapipe/tasks-vision` 的 **FaceLandmarker**（468 点 + blendshape），不是 PoseLandmarker；版本精确锁 `0.10.14`，

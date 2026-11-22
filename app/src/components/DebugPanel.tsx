@@ -1,5 +1,6 @@
 import type { GestureConfig } from '../input/config';
 import type { GestureEvent, InputState, RawFrame } from '../input/types';
+import type { Peaks } from '../hooks/useDebugTrace';
 
 interface DebugPanelProps {
   frame: RawFrame | null;
@@ -10,6 +11,10 @@ interface DebugPanelProps {
   overlay: boolean;
   onOverlayChange: (value: boolean) => void;
   delegate: 'GPU' | 'CPU' | null;
+  peaks: Peaks;
+  rows: number;
+  onResetPeaks: () => void;
+  onExportCsv: () => void;
   onClose: () => void;
 }
 
@@ -46,6 +51,27 @@ function Toggle({
   );
 }
 
+function PanelButton({
+  children,
+  onClick,
+  disabled = false,
+}: {
+  children: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex-1 rounded-lg border-2 border-edge bg-page px-3 py-2 text-base font-bold disabled:opacity-40"
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function DebugPanel({
   frame,
   state,
@@ -55,6 +81,10 @@ export default function DebugPanel({
   overlay,
   onOverlayChange,
   delegate,
+  peaks,
+  rows,
+  onResetPeaks,
+  onExportCsv,
   onClose,
 }: DebugPanelProps) {
   return (
@@ -113,6 +143,38 @@ export default function DebugPanel({
           ) : '—'}
         </dd>
       </dl>
+
+      <div className="flex flex-col gap-1">
+        <h3 className="font-bold">峰值保持（本次会话）</h3>
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono">
+          <dt className="text-dim">max |yaw|</dt>
+          <dd className="text-right font-bold text-ring">{num(peaks.absYaw)}</dd>
+          <dt className="text-dim">max pitch</dt>
+          <dd className="text-right font-bold text-ring">{num(peaks.pitch)}</dd>
+          <dt className="text-dim">max blinkL</dt>
+          <dd className="text-right font-bold text-ring">{num(peaks.blinkL)}</dd>
+          <dt className="text-dim">max blinkR</dt>
+          <dd className="text-right font-bold text-ring">{num(peaks.blinkR)}</dd>
+          <dt className="text-dim">max jaw</dt>
+          <dd className="text-right font-bold text-ring">{num(peaks.jaw)}</dd>
+          <dt className="text-dim">confirm 次数</dt>
+          <dd className="text-right font-bold text-ring">{peaks.confirm}</dd>
+          <dt className="text-dim">pause 次数</dt>
+          <dd className="text-right font-bold text-ring">{peaks.pause}</dd>
+        </dl>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-2">
+          <PanelButton onClick={onResetPeaks}>重置峰值</PanelButton>
+          <PanelButton onClick={onExportCsv} disabled={rows === 0}>
+            导出 CSV
+          </PanelButton>
+        </div>
+        <p className="text-xs text-dim">
+          CSV 是最近 60 秒的逐帧数据（当前 {rows} 帧），带 UTF-8 BOM，Excel 可直接打开。
+        </p>
+      </div>
 
       <div className="flex flex-col gap-1">
         <h3 className="font-bold">engine 事件</h3>

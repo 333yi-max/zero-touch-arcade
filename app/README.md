@@ -52,7 +52,7 @@ npm run preview    # 本地预览构建产物
 - `GameScreen` — `mode='demo'` 走 `ScriptedSource` 画方块；`mode='camera'` 走 `CameraSource` 显示镜像预览 + 关键点叠加
 - `ResultScreen` — 分数占位 + 分享卡占位
 
-输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
+输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `buildCsv`（5 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
 已知未验：真人镜头前的 yaw/pitch 实际量级、自然眨眼能否撑满 `blinkHoldMs: 180`。这两项要人坐在镜头前按 `D` 开调试面板量。
 `delegate` 一栏只表示哪一种委托请求被 `createFromOptions` 接受：GPU 请求成功后，wasm 内部仍打印
@@ -97,9 +97,18 @@ Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`�
 按 `D` 开合（默认隐藏）。含镜像预览开关（同步切 `mirrorX`，且**不重启输入源**）、关键点叠加开关、yaw/pitch/blinkL/blinkR/jaw 实时值、cursorX、engine 事件时间戳、delegate（写的是「GPU（已请求，实际后端由 MediaPipe 决定）」，不是「已启用」）。
 镜像的正确对应关系已实测：镜像预览开 → `mirrorX=-1`，被摄者向左转头光标向左；关掉镜像 → `mirrorX=1`，方向跟着预览走。演示模式下 40 次采样符号一致率 31/31。
 
+面板下面还有两块观测用的（只做测量，不参与手势判定，`gestureEngine.ts` / `config.ts` 一字未改）：
+
+- **峰值保持**：本次会话的 `max |yaw|`、`max pitch`、`max blinkL`、`max blinkR`、`max jaw` 和 confirm / pause 次数，
+  蓝色字，和白色的瞬时值区分开；「重置峰值」清零。峰值缓冲挂在 `GameScreen` 而不是面板里，按 D 关掉面板再打开不会丢。
+  存在的理由：真人眨眼只有 100–150ms，瞬时值截图根本抓不到峰值。
+- **导出 CSV**：「导出 CSV」下载最近 60 秒的逐帧数据，列为 `t,yaw,pitch,blinkL,blinkR,jaw,cursorX,present,event`，
+  `event` 为空或 `confirm` / `pause`。`Blob` + `URL.createObjectURL`，文件名 `zero-touch-trace-YYYYMMDD-HHmmss.csv`，
+  带 UTF-8 BOM、CRLF 行尾，Excel 直接双击打开。构建逻辑是纯函数 `buildCsv(rows)`，不挂 React 也能测（5 条用例）。
+
 ## 下一步
 
-1. 真人面前验一次：转头/点头/眨眼的实际 yaw、pitch 量级，以及自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能需要放宽，放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。
+1. 真人面前验一次：转头/点头/眨眼的实际 yaw、pitch 量级，以及自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能需要放宽，放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。面板的峰值保持和 CSV 导出就是为这条准备的。
 2. 校准页接真实采样与自适应量程（`calibrateNeutral` / `setRangeFromOffsets` 已在引擎里，UI 未接）。
 3. 游戏本体：光标命中判定与计分。
 
