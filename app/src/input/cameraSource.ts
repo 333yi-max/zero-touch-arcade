@@ -48,8 +48,10 @@ function classify(error: unknown): CameraErrorCode {
 const DETECT_INTERVAL_MS = 33;
 
 /**
- * BASE_URL 在项目里是 './'，MediaPipe 是把文件名直接拼在 wasm 目录后面的，
- * 所以必须保证尾斜杠；再对 document.baseURI 取绝对地址，子路径部署才不会 404。
+ * BASE_URL 在项目里是 './'，先拼它再对 document.baseURI 取绝对地址，子路径部署才不会 404。
+ * 静态资源服务器（含部署用的那个）不会合并重复斜杠，所以 wasm 目录结尾不能带 '/'：
+ * MediaPipe 内部是 `${目录}/${文件名}` 拼接，带斜杠就变成 `/wasm//vision_wasm_internal.js` 404。
+ * dev 服务器会把 `//` 归一化，所以这个坑只在构建产物上暴露。
  */
 function asset(relative: string): string {
   const base = import.meta.env.BASE_URL;
@@ -173,7 +175,7 @@ export class CameraSource implements InputSource {
   }
 
   private async createLandmarker(): Promise<FaceLandmarker> {
-    const fileset = await FilesetResolver.forVisionTasks(asset('wasm/'));
+    const fileset = await FilesetResolver.forVisionTasks(asset('wasm'));
     try {
       const gpu = await FaceLandmarker.createFromOptions(fileset, options('GPU'));
       this.delegate = 'GPU';

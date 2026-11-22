@@ -83,7 +83,10 @@ Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`�
   `cp node_modules/@mediapipe/tasks-vision/wasm/* public/wasm/`
 - `public/models/face_landmarker.task` 是官方 float16/1（3.76 MB）：
   `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`
-- 两者的路径一律经 `import.meta.env.BASE_URL` 拼接再对 `document.baseURI` 取绝对地址（`cameraSource.ts` 的 `asset()`）。MediaPipe 是把文件名直接接在 wasm 目录后面的，尾斜杠丢了就是 404。
+- 两者的路径一律经 `import.meta.env.BASE_URL` 拼接再对 `document.baseURI` 取绝对地址（`cameraSource.ts` 的 `asset()`）。
+  **wasm 目录结尾不能带 `/`**：MediaPipe 内部按 `${目录}/${文件名}` 拼接，带斜杠就变成 `/wasm//vision_wasm_internal.js`。
+  dev 服务器和 `vite preview` 都会把 `//` 归一化成 `/`，所以这个坑只在静态托管上暴露——线上表现为模型加载失败、摄像头不启动，
+  控制台每进一次 game 页多一条 404（2026-11-22 发布后实测踩过）。
 - 构建后 `dist/` 约 23 MB，其中 22 MB 是 wasm 和模型；发布体积以此为准。
 
 ## 调试面板

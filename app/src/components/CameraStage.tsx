@@ -43,15 +43,17 @@ export default function CameraStage({
 }: CameraStageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showNoFaceHint, setShowNoFaceHint] = useState(false);
+  // 只依赖布尔值：frame 每帧都是新对象，把它放进依赖会让下面的定时器一直重置、永远不触发。
+  const facePresent = frame?.present ?? false;
 
   useEffect(() => {
-    if (frame?.present) {
+    if (facePresent) {
       setShowNoFaceHint(false);
       return;
     }
     const timer = window.setTimeout(() => setShowNoFaceHint(true), NO_FACE_HINT_MS);
     return () => window.clearTimeout(timer);
-  }, [frame]);
+  }, [facePresent]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
