@@ -74,7 +74,7 @@ useEffect(() => { /* … */ }, [facePresent]);
 - 判断手段不是多看两眼，是**把线上环境当环境来测**：无痕 + 拦截 `response` 状态码 + 拦截请求 URL + 断言 DOM 可见性。
   这次验收清单里的第 7、9 两条就是专门用来抓这个的，抓到了。
 
-**提交**：`bffb80c`（两处修复）、`8d445ed`（文档与发布记录）。
+**提交**：`bffb80c`（两处修复）、`8d445ed`（文档与发布记录）、`8e4802e`（GPU 文案收到「请求被接受」这一层，见下节）。
 
 ---
 
@@ -86,7 +86,7 @@ useEffect(() => { /* … */ }, [facePresent]);
   避免旧 promise 把新一次的流关掉。
 - **GPU 文案的诚实边界**：`createFromOptions('GPU')` 成功只代表请求被接受，wasm 内部仍打印
   `INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。界面文案改为「加速：GPU 优先」，
-  调试面板改为「GPU（已请求，实际后端由 MediaPipe 决定）」，不写「已启用 / GPU 推理」。
+  调试面板改为「GPU（已请求，实际后端由 MediaPipe 决定）」，不写「已启用 / GPU 推理」。（这条是验收之后补的，提交 `8e4802e`）
 - 未验：真人镜头前的 yaw/pitch 实际量级、自然眨眼能否撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，大概率要放宽）。
 
 **提交**：`89bb1ab`。

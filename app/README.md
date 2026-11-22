@@ -94,7 +94,7 @@ Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`�
 
 ## 调试面板
 
-按 `D` 开合（默认隐藏）。含镜像预览开关（同步切 `mirrorX`，且**不重启输入源**）、关键点叠加开关、yaw/pitch/blinkL/blinkR/jaw 实时值、cursorX、engine 事件时间戳、delegate。
+按 `D` 开合（默认隐藏）。含镜像预览开关（同步切 `mirrorX`，且**不重启输入源**）、关键点叠加开关、yaw/pitch/blinkL/blinkR/jaw 实时值、cursorX、engine 事件时间戳、delegate（写的是「GPU（已请求，实际后端由 MediaPipe 决定）」，不是「已启用」）。
 镜像的正确对应关系已实测：镜像预览开 → `mirrorX=-1`，被摄者向左转头光标向左；关掉镜像 → `mirrorX=1`，方向跟着预览走。演示模式下 40 次采样符号一致率 31/31。
 
 ## 下一步
@@ -106,7 +106,7 @@ Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`�
 ## 部署到 Qoder Sites
 
 **线上地址（公开，免登录）**：<https://zero-touch-arcade-isyzlt2g2ce.qoder.zone>
-`access_mode: public`，2026-11-22 发布，同日 20:54 重新发布到 Day 3 收尾构建（`assets/index-B-l08UlS.js`，含真实摄像头与 favicon）。
+`access_mode: public`，2026-11-22 发布，同日 21:45 重新发布到当前构建（`assets/index-CoscUwW7.js`，含真实摄像头、favicon 与 GPU 文案修正）。
 线上验收：无痕窗口进 game 页，7 个请求全部同源、零 4xx，控制台只剩 MediaPipe 自己打的
 `INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。
 
