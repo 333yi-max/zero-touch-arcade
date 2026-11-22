@@ -85,6 +85,7 @@ function release(stream: MediaStream): void {
 export class CameraSource implements InputSource {
   /** 给叠加层画关键点用，不参与引擎计算。 */
   landmarks: NormalizedLandmark[] | null = null;
+  /** 记录哪一种委托请求被 createFromOptions 接受，不代表推理真的落在 GPU 上。 */
   delegate: 'GPU' | 'CPU' | null = null;
 
   private frameCb: ((frame: RawFrame) => void) | null = null;

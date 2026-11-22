@@ -104,7 +104,14 @@ export default function DebugPanel({
         <dt className="text-dim">present</dt>
         <dd className="text-right">{frame ? String(frame.present) : '—'}</dd>
         <dt className="text-dim">delegate</dt>
-        <dd className="text-right">{delegate ?? '—'}</dd>
+        <dd className="text-right">
+          {delegate ? (
+            <>
+              {delegate}
+              <span className="block text-xs text-dim">（已请求，实际后端由 MediaPipe 决定）</span>
+            </>
+          ) : '—'}
+        </dd>
       </dl>
 
       <div className="flex flex-col gap-1">

@@ -52,11 +52,12 @@ npm run preview    # 本地预览构建产物
 - `GameScreen` — `mode='demo'` 走 `ScriptedSource` 画方块；`mode='camera'` 走 `CameraSource` 显示镜像预览 + 关键点叠加
 - `ResultScreen` — 分数占位 + 分享卡占位
 
-输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托失败自动回退 CPU，切后台释放摄像头轨道）。
+输入侧已就位：`GestureEngine`（13 条用例）+ `landmarksToFrame`（9 条用例）+ `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
 已知未验：真人镜头前的 yaw/pitch 实际量级、自然眨眼能否撑满 `blinkHoldMs: 180`。这两项要人坐在镜头前按 `D` 开调试面板量。
-`delegate` 一栏同理只能算「GPU 请求被接受」：`createFromOptions('GPU')` 成功后 wasm 内部仍打印
-`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`，没有证据说明推理真的跑在 GPU 上。
+`delegate` 一栏只表示哪一种委托请求被 `createFromOptions` 接受：GPU 请求成功后，wasm 内部仍打印
+`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`，没有证据说明推理跑在 GPU 上。所以界面文案只说「加速：GPU 优先」，
+调试面板写「GPU（已请求，实际后端由 MediaPipe 决定）」，不写「已启用」。
 
 无障碍相关的既定约束：按钮最小 64px 高、深底高对比配色、焦点环 3px、`prefers-reduced-motion` 降级、手机竖屏 375px 可用。
 

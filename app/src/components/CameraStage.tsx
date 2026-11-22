@@ -87,7 +87,7 @@ export default function CameraStage({
     ? '正在加载手势模型，第一次约 2 秒…'
     : !frame.present
       ? '没找到人脸，把脸对准取景框中间。'
-      : `已捕捉人脸 · ${source?.delegate === 'CPU' ? 'CPU 回退' : 'GPU 委托已启用'}`;
+      : `已捕捉人脸 · 加速：${source?.delegate === 'CPU' ? 'CPU' : 'GPU 优先'}`;
 
   return (
     <div className="flex flex-col gap-3">
