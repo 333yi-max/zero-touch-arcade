@@ -5,6 +5,56 @@
 
 ---
 
+## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡
+
+交付内容（提交 `c95a654`）：状态机加 `select` 屏与 `gameId`，删掉 `result` 屏和 `game_finished`/`replay` 两个死事件；
+新纯模块 `rhythmGame` / `demoRhythm` / `bestScores` / `shareCard` 各配单测；`GameScreen` 按游戏拆成 `StarSession` /
+`RhythmSession` 两个自持 hook 的会话；音效加节拍/判定/评级音；结果卡统一，最佳成绩存 `zt.best.v1`，分享卡 Web Share 优先。
+
+### 节奏判定里最容易写错的两处
+
+**浅拷贝共享 results 数组。** `step` 的 `st = {...s}` 是浅拷贝，`judgeAt` 里直接 `st.results.push(...)` 会污染调用方手里的旧状态，
+整局重放时历史帧全被改写。必须 `st.results = [...st.results, result]`。starGame 的 `st.stars` 同款坑，Day 5 踩过，Day 6 又踩一次。
+
+**提前判定会吃掉拍点音。** 拍点事件按 `elapsed >= beatAtMs(i)` 触发，但 confirm 允许提前 ±120ms 判定 —— 如果 beat 事件和判定共用
+`beatIndex` 游标，提前 Perfect 会让这一拍的 beat 声直接消失。所以 `beatTick` 是独立游标：判定先走 `beatIndex`，
+beat 事件照样在拍点那一刻发。对应测试「beat 事件在拍点越过时发出，不受提前判定的影响」锁死这条。
+
+### 演示打拍：目标时刻 + 帧粒度，不是「到点按一下」
+
+第一版测试用 100ms 步进模拟整局，奇数拍（目标 `beatAt+40`）在 100ms 步进下总是晚一帧触发，判成 good。
+浏览器实际是 ~16ms 步进所以没事，但模拟和真实不一致的测试没有价值 —— 改成 16ms 步进（约 1200 步）后，
+演示输入 ±40ms 的目标全部落在 perfect 窗口内。整局模拟锁死：14/16 命中 = 87.5%，评级 A、1400 分、完美连击 6。
+
+### 演示模式的虚拟玩家会「替用户点再玩一次」
+
+虚拟玩家每 3 秒点一次头，而「结束后点头 = 再玩一次」是 Day 5 的设计 —— 于是演示模式的结果卡每 3 秒就被顶掉，
+浏览器验收点「下载分享卡」时撞上重开，卡在等待 download 事件。修法是给两个 hook 加 `replayOnConfirm` 选项
+（默认 true，摄像头模式行为不变），演示模式传 false，虚拟玩家的点头不再循环重开。顺手把「结果卡 4 秒后仍在」写进验收脚本。
+
+### 首次成绩没写进盘
+
+ResultCard 挂载时记最佳分，最初只在「超过已有记录」时写盘 —— 每个游戏的**第一次**成绩 prev 是 null，
+永远不写。浏览器验收发现 `zt.best.v1` 读出来是 null 才揪出来。修成 `prev === null || score > prev` 都写，
+「新纪录」徽标仍只在超过旧纪录时亮。bestScores 的单测里补了「坏数据当没有、写不进也照常玩」两条。
+
+### 无头 Chrome 的两条环境事实
+
+- `navigator.canShare` 整个 **undefined**（不是返回 false），所以下载路径自然走到兜底；为测「Web Share 优先」得先
+  `Object.defineProperty` 打桩 canShare/share，再断言文件名传进了 `share({files})`。
+- data: 页面里的 `<a download>` 点击**不产生下载**，探针脚本要在真实的 http 源上跑。
+
+### 怎么验的
+
+- 单测 123 条全绿（`rhythmGame` 14 + `demoRhythm` 3 + `bestScores` 9 + `shareCard` 5 + machine 10 + 原有 82），`tsc` 干净，build 355KB JS。
+- Playwright 无头验收（28 条全过）：首页 → 演示模式 → 选游戏 → 接星星整局（演示瞄准打到 170 分）→ 结果卡（4 秒稳定、
+  最佳成绩）→ 分享卡 PNG 下载（243KB、`zero-touch-score-20261124.png`）→ 换个游戏 → 节奏点头自动打拍（Perfect、
+  61fps）→ 结果卡（A 级、88%、1400 分）→ Web Share 打桩验证优先路径 → `zt.best.v1` 两个游戏都在 → 回首页 →
+  坏数据 `{oops` 不崩 → 375px 三屏无横向溢出 → console error 0、4xx 0。截图 32–38 在 docs/shots。
+- 摄像头模式的链路（校准 → 选游戏 → 两游戏）无头浏览器验不了，留给真人验收（README「下一步」第 3 条）。
+
+---
+
 ## 2026-11-24 · Day 5：游戏 1「接星星」
 
 三分钟一局，挡板跟 `cursorX`，点头/眨眼开局，张嘴暂停。规则全部在 [starGame.ts](../app/src/game/starGame.ts) ——

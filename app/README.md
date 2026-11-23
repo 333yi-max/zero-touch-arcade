@@ -29,33 +29,37 @@ npm run build      # 先 tsc --noEmit 做类型检查，再产出 dist/
 npm run preview    # 本地预览构建产物
 ```
 
-## 当前状态：Day 5，游戏 1「接星星」可玩
+## 当前状态：Day 6，两个游戏 + 选游戏页 + 统一结果卡可玩
 
-骨架、虚拟玩家、真实摄像头、真实校准、第一个三分钟小游戏都齐了。游戏规则全部在 `src/game/starGame.ts`
-（纯函数，node 里能整局模拟），React 只做外壳；引擎输出的 `cursorX` 实时控制挡板，
-`confirm` 只用于开局和「再玩一次」，`pause`（张嘴）暂停/继续。音效全部 Web Audio 合成，零音频文件；
-每个声音都有画面替身，`prefers-reduced-motion` 下粒子/红光自动降级。
+两个三分钟小游戏都齐了，选游戏页在中间衔接。规则全部在 `src/game/` 下（纯函数，node 里能整局模拟），
+React 只做外壳。引擎输出的 `cursorX` 实时控制挡板（接星星），`confirm` 在节奏点头里就是「拍点点头」，
+也用于开局和「再玩一次」，`pause`（张嘴）只存在于接星星。音效全部 Web Audio 合成，零音频文件；
+每个声音都有画面替身，`prefers-reduced-motion` 下粒子/红光/发光自动降级。
 
-状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → game → result`：
+状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → select → game`：
 
 | 事件 | 从 | 到 | 说明 |
 | --- | --- | --- | --- |
-| `choose_camera` | start | calibration 或 game | 本机存过校准值就直接进游戏 |
-| `start_calibration` | start | calibration | 「重新校准」入口 |
-| `choose_demo` | start | game | 演示模式（虚拟玩家，量程恒为默认值） |
-| `calibration_finished` | calibration | game | 采到数 → `mode='camera'`，置 `calibrated` 并写盘 |
-| `calibration_skipped` | calibration | game | 「跳过，使用默认值」→ 摄像头模式，**不写盘** |
-| `game_finished` | game | result | 已被游戏内结束覆盖层取代，应用不再派发（machine 与测试保留） |
-| `replay` | result | game | 已被游戏内「再玩一次」取代（machine 与测试保留） |
+| `choose_camera` | start | calibration 或 select | 本机存过校准值就直奔选游戏页 |
+| `start_calibration` | start / select | calibration | 「重新校准」入口 |
+| `choose_demo` | start | select | 演示模式（虚拟玩家，量程恒为默认值） |
+| `calibration_finished` | calibration | select | 采到数 → `mode='camera'`，置 `calibrated` 并写盘 |
+| `calibration_skipped` | calibration | select | 「跳过，使用默认值」→ 摄像头模式，**不写盘** |
+| `pick_game {game}` | select | game | 进对应游戏，`gameId ∈ {'star','rhythm'}`，分数清零 |
+| `switch_game` | game | select | 结果卡「换个游戏」，输入模式不变 |
 | `home` | 任意 | start | 返回按钮 |
+
+「再玩一次」是游戏内动作（重置逻辑状态），不走状态机 —— 结束后确认手势要能直接重开。
+已删掉 `result` 屏幕与 `game_finished` / `replay` 两个死事件，测试同步更新。
 
 页面：
 
-- `StartScreen` — 大标题 + 副标题 + 入口；有存档时「开始体验」直奔游戏，并多出「重新校准」
+- `StartScreen` — 大标题 + 副标题 + 入口；有存档时「开始体验」直奔选游戏页，并多出「重新校准」
 - `CalibrationScreen` — 4 步采样 + 眨眼确认，见下节
-- `GameScreen` — 游戏 1「接星星」：`mode='demo'` 走 `ScriptedSource` + 辅助瞄准；`mode='camera'` 走 `CameraSource`，挡板跟真实 `cursorX`。结束页是游戏内的覆盖层（结束后确认手势还要能触发「再玩一次」，所以不切成独立页面），`ResultScreen` 已删
+- `SelectScreen` — 接星星 / 节奏点头两个大按钮（≥64px），挂载时按 `zt.settings.v1.voice` 播报两个游戏名，可点「再念一遍」
+- `GameScreen` — 按 `gameId` 挂 `StarSession` 或 `RhythmSession`（各自持有纯逻辑 hook、音效、覆盖层）；结束统一走 `ResultCard`（大分数、评价、最佳成绩、再玩一次/换个游戏/回到首页/下载分享卡）
 
-测试 92 条：`GestureEngine` 17 + sequencer 14 + `starGame` 14 + storage 10 + `landmarksToFrame` 9 + machine 9 + sampling 7 + `demoAim` 7 + `buildCsv` 5。
+测试 123 条：`GestureEngine` 17 + sequencer 14 + `starGame` 14 + `rhythmGame` 14 + `demoRhythm` 3 + `bestScores` 9 + `shareCard` 5 + storage 10 + `landmarksToFrame` 9 + machine 10 + sampling 7 + `demoAim` 7 + `buildCsv` 5。
 摄像头模式的预览压成 320px 小窗、游戏画布 `max-h-[38vh]`，一屏能看到挡板；准备状态有「开始游戏」覆盖层（点头/眨眼/点按钮都能开局）。
 输入侧是 `GestureEngine` + `landmarksToFrame` + `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
@@ -118,6 +122,37 @@ npm run preview    # 本地预览构建产物
 lerp ≤0.08 并叠轻微摆动；每颗星按确定性 sin-hash 决定是否「故意漏」（约 12%，每局两三颗），
 整局模拟锁死在测试里 —— 分数必须落在 300–600，不能 100% 作弊。摄像头模式完全不经过这条路。
 
+## 游戏 2：节奏点头
+
+16 拍、60 BPM（一拍 1 秒），规则全部在 [src/game/rhythmGame.ts](src/game/rhythmGame.ts) —— 同样是纯函数
+`step(state, input, dtMs)`，时间只来自 dt，node 里能整局重放（14 条用例锁死判定窗口、评级分档、连击规则）。
+
+- 拍点 = `beatAtMs(i) = (i+1)×1000ms`；confirm 上升沿对**下一个未判定的拍子**算毫秒差：
+  ≤120ms Perfect（+100，连击 +1）、≤250ms Good（+60，连击清零）、更早就忽略不算
+- 拍点过后 250ms 没确认自动记 Miss（连击清零，0 分）；每拍只判定一次，结果恒为 16 条
+- 收缩环提前 1200ms 从大到小收缩，与中心目标圈重合的一刻就是拍点；下一拍的环会提前 200ms 淡入
+- 评级按命中率：≥95% S、≥85% A、≥70% B、其余 C；连击只数 Perfect
+- 相位：ready（点头或眨眼开始）→ 3 秒倒计时（语音「准备，跟着节拍点头」）→ playing → over（无暂停：
+  张嘴留给接星星，节奏点头只认点头）→ 结果卡报准确率、评级、完美连击
+- 画布即时反馈 Perfect / Good / Miss 大字，HUD 有拍数 n/16、连击与判定播报（aria-live）
+
+音效在 [src/game/sound.ts](src/game/sound.ts) 里新加：节拍音 880Hz 三角波 55ms、Perfect 1319Hz 高音
+（带 1760Hz 泛音）、Good 988Hz 中音、Miss 复用 180→140Hz 低音软咚；结束按评级播 —— S/A 上行琶音、B/C 平缓两音。
+演示模式的虚拟打拍（[src/game/demoRhythm.ts](src/game/demoRhythm.ts)）是纯函数：每拍 ±40ms 内点头，
+跳过第 4、第 11 拍 → 14/16 = 87.5%，稳定拿 A（1400 分，整局模拟锁死在测试里）。
+
+## 结果卡、最佳成绩与分享卡
+
+两个游戏共用 [src/components/ResultCard.tsx](src/components/ResultCard.tsx)：大分数、评价
+（接星星 = 接住/漏掉数，节奏点头 = 准确率 + 评级）、最佳成绩、再玩一次 / 换个游戏 / 回到首页 / 下载分享卡。
+最佳成绩存 `zt.best.v1`（`{star, rhythm}`，纯 parse/serialize 在 [src/game/bestScores.ts](src/game/bestScores.ts)，
+坏数据当没有、写不进也正常玩，不碰校准/设置的 schema）。
+
+分享卡（[src/game/shareCard.ts](src/game/shareCard.ts)）：1080×1440 PNG，深色渐变 + 大分数 + 游戏名 +
+「我不用手也能玩」+ 本地日期 + Canvas 路径画的脸部线条图标（零图片文件）；`navigator.canShare({files})`
+可用时优先系统分享面板，否则直接下载 `zero-touch-score-YYYYMMDD.png`；中文走系统字体栈
+（`'PingFang SC', 'Microsoft YaHei', …`）。`drawShareCard` 是纯函数，单测用假 ctx 断言绘制命令。
+
 ## 目录
 
 ```
@@ -131,16 +166,17 @@ app/
    ├─ App.tsx              # 状态机驱动的屏幕切换
    ├─ state/machine.ts     # 纯函数状态机
    ├─ calibration/         # 校准：steps/sampling/result/sequencer/storage/speech（全纯）
-   ├─ game/                # 游戏 1：starGame 纯逻辑 + sound/gameSpeech/demoAim/playerPrefs
+   ├─ game/                # 游戏纯逻辑 + 音效/语音/演示/最佳成绩/分享卡/偏好
    ├─ input/               # 引擎 + 输入源 + 关键点→RawFrame
-   ├─ hooks/               # useGesture / useCalibration / useStarGame
-   └─ components/          # 屏幕 + StarGame 画布 + Button/TopBar/CameraStage/DebugPanel/ProgressRing/OffsetBar
+   ├─ hooks/               # useGesture / useCalibration / useStarGame / useRhythmGame
+   └─ components/          # 屏幕 + StarGame/RhythmGame 画布 + ResultCard/SelectScreen + Button/TopBar/CameraStage/DebugPanel/ProgressRing/OffsetBar
 ```
 
 Day 2 加了：`src/input/`（引擎 + 输入源抽象 + 虚拟玩家）、`src/hooks/useGesture.ts`、`tests/`。
 Day 3 加了：`src/input/cameraSource.ts`（FaceLandmarker）、`faceFrame.ts`（关键点→RawFrame 纯函数）、`src/components/CameraStage.tsx`、`DebugPanel.tsx`、`public/wasm`、`public/models`。
 Day 4 加了：`src/calibration/`（steps / sampling / result / sequencer / storage / speech 六个纯模块）、`src/hooks/useCalibration.ts`、`src/components/ProgressRing.tsx`、`OffsetBar.tsx`，并重写了 `CalibrationScreen.tsx`。
 Day 5 加了：`src/game/`（starGame 纯逻辑、Web Audio 合成音效、演示辅助瞄准、语音/偏好存取）、`src/hooks/useStarGame.ts`、`src/components/StarGame.tsx`，重写了 `GameScreen.tsx`，删了 `ResultScreen.tsx`。
+Day 6 加了：`rhythmGame/demoRhythm/bestScores/shareCard` 纯模块、`useRhythmGame.ts`、`RhythmGame/SelectScreen/ResultCard` 组件，machine 加 `select` 与 `pick_game/switch_game`、删 `result` 屏幕。
 
 ## 摄像头与模型资源
 
@@ -172,9 +208,10 @@ Day 5 加了：`src/game/`（starGame 纯逻辑、Web Audio 合成音效、演�
 ## 下一步
 
 1. 真人面前验一次自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能要放宽；放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。转头和点头的量级不用肉眼量了 —— 校准摘要直接把 `yawRange / pitchRange` 写在屏幕上；面板的峰值保持和 CSV 导出留着做逐帧核对。
-2. 真人玩一局「接星星」核对挡板手感（校准后 cursorX 是否顺、张嘴暂停/恢复是否自然）。
-3. 游戏 2「节奏点头」（明确不做：结果页分享卡、排行榜、账号、后端）。
-4. 论坛帖「我改了什么」从 [docs/qoder-log.md](../docs/qoder-log.md) 取素材（Day 3 的两个线上 bug、Day 4 的校准与发布、Day 5 的游戏各有记录，含提交号）。
+2. 真人玩一局「接星星」核对挡板手感（校准后 cursorX 是否顺、张嘴暂停/恢复是否自然）；真人打一局「节奏点头」核对判定宽容度（±120/±250ms 对点头动作是否够用）。
+3. 摄像头模式下两游戏的完整链路（校准 → 选游戏 → 接星星/节奏点头 → 结果卡）要真人各走一遍 —— 无头浏览器验不了摄像头，Day 6 的浏览器验收覆盖的是演示模式全流程。
+4. Day 7 计划：首页视觉重设计与字体。
+5. 论坛帖「我改了什么」从 [docs/qoder-log.md](../docs/qoder-log.md) 取素材（各天都有记录，含提交号）。
 
 ## 源码仓库
 
