@@ -1,4 +1,5 @@
 import type { RawFrame } from '../input/types';
+import type { JudgeResult, Rating } from './rhythmGame';
 
 /**
  * 全部音效都用 Web Audio 合成，零音频文件。
@@ -17,6 +18,9 @@ export interface GameSounds {
   startSound(): void;
   endSound(): void;
   confirmSound(frame: RawFrame | null): void;
+  beatSound(): void;
+  judgeSound(result: JudgeResult): void;
+  ratingSound(rating: Rating): void;
   setTracking(cursorX: number, active: boolean): void;
   setMuted(muted: boolean): void;
   dispose(): void;
@@ -112,6 +116,32 @@ export function createGameSounds(): GameSounds {
       // 眨眼高一点、点头低一点；分不出来就用点头音
       const blinking = frame !== null && (frame.blinkL > 0.2 || frame.blinkR > 0.2);
       tone(blinking ? 880 : 660, 0.06, 0.2, { type: 'triangle' });
+    },
+    beatSound(): void {
+      // 节拍音：短促三角波，不抢判定音的风头
+      tone(880, 0.055, 0.1, { type: 'triangle' });
+    },
+    judgeSound(result: JudgeResult): void {
+      if (result === 'perfect') {
+        // 高音带一点泛音，最响的一档
+        tone(1319, 0.12, 0.16, { type: 'triangle' });
+        tone(1760, 0.1, 0.08, { type: 'triangle', when: 0.02 });
+      } else if (result === 'good') {
+        tone(988, 0.1, 0.12, { type: 'triangle' });
+      } else {
+        // 低音软咚，和 missSound 同一配方
+        tone(180, 0.12, 0.13, { slideTo: 140 });
+      }
+    },
+    ratingSound(rating: Rating): void {
+      // S/A 上行琶音，B/C 平缓两音
+      const steps =
+        rating === 'S'
+          ? [523, 659, 784, 1047]
+          : rating === 'A'
+            ? [523, 659, 784]
+            : [392, 330];
+      steps.forEach((freq, i) => tone(freq, 0.16, 0.16, { when: i * 0.11 }));
     },
     setTracking(cursorX: number, active: boolean): void {
       const magnitude = Math.min(1, Math.abs(cursorX));

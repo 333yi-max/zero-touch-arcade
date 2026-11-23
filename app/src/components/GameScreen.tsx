@@ -1,37 +1,53 @@
 import { useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { useDebugTrace } from '../hooks/useDebugTrace';
 import { useGesture } from '../hooks/useGesture';
+import { useRhythmGame } from '../hooks/useRhythmGame';
+import type { RhythmGameHud } from '../hooks/useRhythmGame';
 import { useStarGame } from '../hooks/useStarGame';
 import type { StarGameHud } from '../hooks/useStarGame';
 import { CameraSource } from '../input/cameraSource';
-import type { Calibration, GestureEvent } from '../input/types';
+import type { Calibration, GestureEvent, InputState, RawFrame } from '../input/types';
 import { ScriptedSource } from '../input/scriptedSource';
 import { demoAimCursor } from '../game/demoAim';
+import { demoRhythmInput } from '../game/demoRhythm';
 import { createGameSpeaker } from '../game/gameSpeech';
 import type { GameSpeaker } from '../game/gameSpeech';
 import { readMuted, writeMuted } from '../game/playerPrefs';
 import { createGameSounds } from '../game/sound';
 import type { GameSounds } from '../game/sound';
-import type { GameOverCause } from '../game/starGame';
-import type { Mode } from '../state/machine';
+import type { JudgeResult } from '../game/rhythmGame';
+import type { GameId, Mode } from '../state/machine';
 import Button from './Button';
 import CameraStage, { CameraProblemCard } from './CameraStage';
 import DebugPanel from './DebugPanel';
+import ResultCard from './ResultCard';
+import RhythmGame from './RhythmGame';
+import type { RhythmFx } from './RhythmGame';
 import StarGame from './StarGame';
 import type { GameFx } from './StarGame';
 import TopBar from './TopBar';
 
 interface GameScreenProps {
+  gameId: GameId;
   mode: Mode;
   /** 校准值只在摄像头模式下生效；演示模式恒用引擎默认量程。 */
   calibration?: Required<Calibration> | null;
   onBack: () => void;
   onDemo: () => void;
+  onSwitchGame: () => void;
 }
 
 const EVENT_LOG_SIZE = 8;
 
-export default function GameScreen({ mode, calibration, onBack, onDemo }: GameScreenProps) {
+export default function GameScreen({
+  gameId,
+  mode,
+  calibration,
+  onBack,
+  onDemo,
+  onSwitchGame,
+}: GameScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const scriptedRef = useRef<ScriptedSource | null>(null);
 
@@ -66,6 +82,130 @@ export default function GameScreen({ mode, calibration, onBack, onDemo }: GameSc
   );
   const { state, events, frame, error } = gesture;
 
+  useEffect(() => {
+    if (events.length === 0) return;
+    setEventLog((log) =>
+      [...events.map((type) => ({ type, at: Date.now() })), ...log].slice(0, EVENT_LOG_SIZE),
+    );
+  }, [events]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.key.toLowerCase() !== 'd') return;
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      if (target && /^(input|textarea|select)$/i.test(target.tagName)) return;
+      event.preventDefault();
+      setDebugOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const problem = error ?? resumeError;
+  const trace = useDebugTrace(frame, state.cursorX, events);
+
+  const camera = {
+    videoRef,
+    source: cameraSource,
+    mirrored: mirrorX === -1,
+    overlay,
+    onDemo,
+  };
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <TopBar
+        title={gameId === 'star' ? '接星星' : '节奏点头'}
+        onBack={onBack}
+        right={
+          <span className="rounded-full border-2 border-edge bg-card px-4 py-2 text-base font-bold text-dim">
+            {mode === 'demo' ? '演示模式' : '摄像头'}
+          </span>
+        }
+      />
+
+      {mode === 'demo' ? (
+        <p className="rounded-card bg-card px-5 py-3 text-lg text-dim">
+          虚拟玩家演示，开启摄像头即可亲自体验。
+        </p>
+      ) : null}
+
+      {problem ? (
+        <CameraProblemCard message={problem} onDemo={onDemo} />
+      ) : gameId === 'star' ? (
+        <StarSession
+          mode={mode}
+          gestureState={state}
+          gestureEvents={events}
+          frame={frame}
+          camera={camera}
+          onBack={onBack}
+          onSwitchGame={onSwitchGame}
+        />
+      ) : (
+        <RhythmSession
+          mode={mode}
+          gestureState={state}
+          gestureEvents={events}
+          frame={frame}
+          camera={camera}
+          onBack={onBack}
+          onSwitchGame={onSwitchGame}
+        />
+      )}
+
+      <p className="text-base text-dim">按 D 打开调试面板</p>
+
+      {debugOpen ? (
+        <DebugPanel
+          frame={frame}
+          state={state}
+          eventLog={eventLog}
+          mirrorX={mirrorX}
+          onMirrorXChange={setMirrorX}
+          overlay={overlay}
+          onOverlayChange={setOverlay}
+          delegate={cameraSource?.delegate ?? null}
+          calibration={gesture.calibration}
+          peaks={trace.peaks}
+          rows={trace.rows}
+          onResetPeaks={trace.resetPeaks}
+          onExportCsv={trace.exportCsv}
+          onClose={() => setDebugOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// ———— 两个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
+
+interface SessionProps {
+  mode: Mode;
+  gestureState: InputState;
+  gestureEvents: GestureEvent[];
+  frame: RawFrame | null;
+  camera: {
+    videoRef: RefObject<HTMLVideoElement>;
+    source: CameraSource | null;
+    mirrored: boolean;
+    overlay: boolean;
+    onDemo: () => void;
+  };
+  onBack: () => void;
+  onSwitchGame: () => void;
+}
+
+function StarSession({
+  mode,
+  gestureState,
+  gestureEvents,
+  frame,
+  camera,
+  onBack,
+  onSwitchGame,
+}: SessionProps) {
   // 演示模式的辅助瞄准：把真实 cursorX 换成慢慢逼近最近星星的值。
   // 积分器住在 aimRef 里逐帧回传；摄像头模式完全不经过这条路。
   const aimRef = useRef(0);
@@ -78,6 +218,8 @@ export default function GameScreen({ mode, calibration, onBack, onDemo }: GameSc
             return out.cursorX;
           }
         : undefined,
+    // 演示模式的虚拟玩家每 3 秒点一次头，结束后别让它自动再玩，结果卡才看得完
+    replayOnConfirm: mode === 'camera',
   });
 
   const soundsRef = useRef<GameSounds | null>(null);
@@ -101,49 +243,9 @@ export default function GameScreen({ mode, calibration, onBack, onDemo }: GameSc
 
   // 手势脉冲锁存：点头/张嘴只持续一帧，渲染间隔之间出现也不丢
   const latch = latchRef.current;
-  latch.cursorX = state.cursorX;
-  if (state.confirm || events.includes('confirm')) latch.confirm = true;
-  if (state.pause || events.includes('pause')) latch.pause = true;
-
-  useEffect(() => {
-    if (events.length === 0) return;
-    setEventLog((log) =>
-      [...events.map((type) => ({ type, at: Date.now() })), ...log].slice(0, EVENT_LOG_SIZE),
-    );
-  }, [events]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey || event.metaKey || event.altKey || event.key.toLowerCase() !== 'd') return;
-      const target = event.target as HTMLElement | null;
-      if (target?.isContentEditable) return;
-      if (target && /^(input|textarea|select)$/i.test(target.tagName)) return;
-      event.preventDefault();
-      setDebugOpen((open) => !open);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  const problem = error ?? resumeError;
-  const trace = useDebugTrace(frame, state.cursorX, events);
-  const gamePaused = hud.phase === 'paused';
-
-  // 准备中要明确告诉用户「怎么开始」：点头/眨眼，或点按钮（陪护者也能点）。
-  // 结束后复用同一层显示结算卡。
-  const overlayNode =
-    hud.phase === 'over' && hud.overCause ? (
-      <EndCard stats={hud.stats} cause={hud.overCause} onReplay={replay} onHome={onBack} />
-    ) : hud.phase === 'ready' ? (
-      <ReadyCard onStart={() => (latch.confirm = true)} />
-    ) : null;
-
-  const toggleMuted = (): void => {
-    const next = !muted;
-    setMuted(next);
-    writeMuted(next);
-    soundsRef.current?.setMuted(next);
-  };
+  latch.cursorX = gestureState.cursorX;
+  if (gestureState.confirm || gestureEvents.includes('confirm')) latch.confirm = true;
+  if (gestureState.pause || gestureEvents.includes('pause')) latch.pause = true;
 
   // 事件 → 声音 + 视觉特效：每个音效都有画面替身，听障用户不靠声音
   useEffect(() => {
@@ -187,110 +289,232 @@ export default function GameScreen({ mode, calibration, onBack, onDemo }: GameSc
 
   // 游戏中 confirm 不响应用户操作，音效也只在开始前/结束后给反馈
   useEffect(() => {
-    if (
-      events.includes('confirm') &&
-      (hud.phase === 'ready' || hud.phase === 'over')
-    ) {
+    if (gestureEvents.includes('confirm') && (hud.phase === 'ready' || hud.phase === 'over')) {
       soundsRef.current?.confirmSound(frame);
     }
-  }, [events, frame, hud.phase]);
+  }, [gestureEvents, frame, hud.phase]);
 
   // 光标跟随音：越靠边音量越高；暂停/结束/摄像头不可用时静音
-  const trackingActive = !problem && hud.phase !== 'paused' && hud.phase !== 'over';
+  const trackingActive = hud.phase !== 'paused' && hud.phase !== 'over';
   useEffect(() => {
-    soundsRef.current?.setTracking(state.cursorX, trackingActive);
-  }, [state.cursorX, trackingActive]);
+    soundsRef.current?.setTracking(gestureState.cursorX, trackingActive);
+  }, [gestureState.cursorX, trackingActive]);
+
+  const toggleMuted = (): void => {
+    const next = !muted;
+    setMuted(next);
+    writeMuted(next);
+    soundsRef.current?.setMuted(next);
+  };
+
+  const gamePaused = hud.phase === 'paused';
+
+  // 准备中要明确告诉用户「怎么开始」：点头/眨眼，或点按钮（陪护者也能点）。
+  // 结束后复用同一层显示统一结果卡。
+  const overlayNode =
+    hud.phase === 'over' && hud.overCause ? (
+      <ResultCard
+        result={{ game: 'star', stats: hud.stats }}
+        onReplay={replay}
+        onSwitchGame={onSwitchGame}
+        onHome={onBack}
+      />
+    ) : hud.phase === 'ready' ? (
+      <ReadyCard onStart={() => (latch.confirm = true)} />
+    ) : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <TopBar
-        title="接星星"
-        onBack={onBack}
-        right={
-          <span className="rounded-full border-2 border-edge bg-card px-4 py-2 text-base font-bold text-dim">
-            {mode === 'demo' ? '演示模式' : '摄像头'}
-          </span>
-        }
-      />
-
-      {mode === 'demo' ? (
-        <p className="rounded-card bg-card px-5 py-3 text-lg text-dim">
-          虚拟玩家演示，开启摄像头即可亲自体验。
-        </p>
-      ) : null}
-
-      <HudBar
+    <>
+      <StarHudBar
         hud={hud}
         muted={muted}
         onMuteToggle={toggleMuted}
         onPauseToggle={() => (latchRef.current.pause = true)}
       />
-
-      {mode === 'demo' ? (
-        <StarGame
-          gameRef={gameRef}
-          paused={gamePaused}
-          fxRef={fxRef}
-          overlay={overlayNode}
-        />
-      ) : problem ? (
-        <CameraProblemCard message={problem} onDemo={onDemo} />
-      ) : (
-        <>
-          {/* 预览压成小窗：4:3 全宽会把下面的游戏画布整个挤出屏幕 */}
-          <div className="mx-auto w-full max-w-xs">
-            <CameraStage
-              videoRef={videoRef}
-              source={cameraSource}
-              mirrored={mirrorX === -1}
-              overlay={overlay}
-              paused={gamePaused}
-              frame={frame}
-              onDemo={onDemo}
-            />
-          </div>
-          <StarGame
-            gameRef={gameRef}
+      {mode === 'camera' ? (
+        // 预览压成小窗：4:3 全宽会把下面的游戏画布整个挤出屏幕
+        <div className="mx-auto w-full max-w-xs">
+          <CameraStage
+            videoRef={camera.videoRef}
+            source={camera.source}
+            mirrored={camera.mirrored}
+            overlay={camera.overlay}
             paused={gamePaused}
-            fxRef={fxRef}
-            overlay={overlayNode}
-            frameClass="max-h-[38vh]"
+            frame={frame}
+            onDemo={camera.onDemo}
           />
-        </>
-      )}
-
-      <p className="text-base text-dim">按 D 打开调试面板</p>
-
-      {debugOpen ? (
-        <DebugPanel
-          frame={frame}
-          state={state}
-          eventLog={eventLog}
-          mirrorX={mirrorX}
-          onMirrorXChange={setMirrorX}
-          overlay={overlay}
-          onOverlayChange={setOverlay}
-          delegate={cameraSource?.delegate ?? null}
-          calibration={gesture.calibration}
-          peaks={trace.peaks}
-          rows={trace.rows}
-          onResetPeaks={trace.resetPeaks}
-          onExportCsv={trace.exportCsv}
-          onClose={() => setDebugOpen(false)}
-        />
+        </div>
       ) : null}
-    </div>
+      <StarGame
+        gameRef={gameRef}
+        paused={gamePaused}
+        fxRef={fxRef}
+        overlay={overlayNode}
+        frameClass={mode === 'camera' ? 'max-h-[38vh]' : undefined}
+      />
+    </>
   );
 }
 
-interface HudBarProps {
-  hud: StarGameHud;
+function RhythmSession({
+  mode,
+  gestureState,
+  gestureEvents,
+  frame,
+  camera,
+  onBack,
+  onSwitchGame,
+}: SessionProps) {
+  // 演示模式的虚拟打拍：真实手势完全忽略，按节拍注入 confirm
+  const { gameRef, latchRef, hud, events: gameEvents, replay } = useRhythmGame({
+    inputTransform: mode === 'demo' ? demoRhythmInput : undefined,
+    replayOnConfirm: mode === 'camera',
+  });
+
+  const soundsRef = useRef<GameSounds | null>(null);
+  const speakerRef = useRef<GameSpeaker | null>(null);
+  const fxRef = useRef<RhythmFx>({ judgeUntil: 0, judge: null, beatUntil: 0 });
+  const prevPhaseRef = useRef<RhythmGameHud['phase']>('ready');
+  const [muted, setMuted] = useState<boolean>(() => readMuted());
+  const [lastJudge, setLastJudge] = useState<JudgeResult | null>(null);
+
+  useEffect(() => {
+    const sounds = createGameSounds();
+    const speaker = createGameSpeaker();
+    sounds.setMuted(readMuted());
+    soundsRef.current = sounds;
+    speakerRef.current = speaker;
+    return () => {
+      soundsRef.current = null;
+      speakerRef.current = null;
+      sounds.dispose();
+    };
+  }, []);
+
+  const latch = latchRef.current;
+  if (gestureState.confirm || gestureEvents.includes('confirm')) latch.confirm = true;
+
+  // 事件 → 声音 + 视觉特效
+  useEffect(() => {
+    if (gameEvents.length === 0) return;
+    const sounds = soundsRef.current;
+    const fx = fxRef.current;
+    const now = performance.now();
+    for (const e of gameEvents) {
+      switch (e.type) {
+        case 'beat':
+          sounds?.beatSound();
+          fx.beatUntil = now + 300;
+          break;
+        case 'judge':
+          sounds?.judgeSound(e.result);
+          fx.judgeUntil = now + 500;
+          fx.judge = { result: e.result, beat: e.beat };
+          setLastJudge(e.result);
+          break;
+        case 'countdown':
+          if (e.remaining === 3) sounds?.startSound();
+          break;
+        case 'gameOver':
+          sounds?.ratingSound(e.stats.rating);
+          break;
+      }
+    }
+  }, [gameEvents]);
+
+  // 语音只报相位切换：开场报玩法，结束报评级
+  useEffect(() => {
+    const speaker = speakerRef.current;
+    if (!speaker) return;
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = hud.phase;
+    if (hud.phase === prev) return;
+    if (hud.phase === 'countdown') speaker.rhythmCountdown();
+    else if (hud.phase === 'over') speaker.rhythmGameOver(hud.stats.rating, hud.score);
+  }, [hud.phase, hud.score, hud.stats]);
+
+  useEffect(() => {
+    if (gestureEvents.includes('confirm') && (hud.phase === 'ready' || hud.phase === 'over')) {
+      soundsRef.current?.confirmSound(frame);
+    }
+  }, [gestureEvents, frame, hud.phase]);
+
+  const toggleMuted = (): void => {
+    const next = !muted;
+    setMuted(next);
+    writeMuted(next);
+    soundsRef.current?.setMuted(next);
+  };
+
+  const overlayNode =
+    hud.phase === 'over' ? (
+      <ResultCard
+        result={{ game: 'rhythm', stats: hud.stats }}
+        onReplay={replay}
+        onSwitchGame={onSwitchGame}
+        onHome={onBack}
+      />
+    ) : hud.phase === 'ready' ? (
+      <ReadyCard onStart={() => (latch.confirm = true)} />
+    ) : null;
+
+  return (
+    <>
+      <RhythmHudBar
+        hud={hud}
+        muted={muted}
+        onMuteToggle={toggleMuted}
+        lastJudge={lastJudge}
+      />
+      {mode === 'camera' ? (
+        <div className="mx-auto w-full max-w-xs">
+          <CameraStage
+            videoRef={camera.videoRef}
+            source={camera.source}
+            mirrored={camera.mirrored}
+            overlay={camera.overlay}
+            paused={false}
+            frame={frame}
+            onDemo={camera.onDemo}
+          />
+        </div>
+      ) : null}
+      <RhythmGame
+        gameRef={gameRef}
+        fxRef={fxRef}
+        overlay={overlayNode}
+        frameClass={mode === 'camera' ? 'max-h-[38vh]' : undefined}
+      />
+    </>
+  );
+}
+
+// ———— HUD 与覆盖层 ————
+
+interface MutedControls {
   muted: boolean;
   onMuteToggle: () => void;
+}
+
+function MuteButton({ muted, onMuteToggle }: MutedControls) {
+  return (
+    <button
+      type="button"
+      onClick={onMuteToggle}
+      aria-pressed={muted}
+      className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg hover:border-accent"
+    >
+      音效：{muted ? '关' : '开'}
+    </button>
+  );
+}
+
+interface StarHudBarProps extends MutedControls {
+  hud: StarGameHud;
   onPauseToggle: () => void;
 }
 
-function HudBar({ hud, muted, onMuteToggle, onPauseToggle }: HudBarProps) {
+function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge bg-card px-5 py-3">
       <p className="text-2xl font-black tabular-nums">
@@ -322,14 +546,7 @@ function HudBar({ hud, muted, onMuteToggle, onPauseToggle }: HudBarProps) {
       ) : null}
 
       <div className="ml-auto flex gap-3">
-        <button
-          type="button"
-          onClick={onMuteToggle}
-          aria-pressed={muted}
-          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg hover:border-accent"
-        >
-          音效：{muted ? '关' : '开'}
-        </button>
+        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
         <button
           type="button"
           onClick={onPauseToggle}
@@ -347,11 +564,56 @@ function HudBar({ hud, muted, onMuteToggle, onPauseToggle }: HudBarProps) {
   );
 }
 
-interface EndCardProps {
-  stats: StarGameHud['stats'];
-  cause: GameOverCause;
-  onReplay: () => void;
-  onHome: () => void;
+const JUDGE_LABELS: Record<JudgeResult, string> = {
+  perfect: 'Perfect',
+  good: 'Good',
+  miss: 'Miss',
+};
+
+interface RhythmHudBarProps extends MutedControls {
+  hud: RhythmGameHud;
+  lastJudge: JudgeResult | null;
+}
+
+function RhythmHudBar({ hud, muted, onMuteToggle, lastJudge }: RhythmHudBarProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge bg-card px-5 py-3">
+      <p className="text-2xl font-black tabular-nums">
+        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
+          得分 {hud.score}
+        </span>
+      </p>
+
+      <p className="text-lg font-bold text-dim">
+        拍子 {hud.judged} / {hud.total}
+      </p>
+
+      {hud.combo > 0 ? (
+        <p
+          aria-live="polite"
+          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
+        >
+          连击 {hud.combo}
+        </p>
+      ) : null}
+
+      <p
+        aria-live="polite"
+        aria-label={lastJudge ? `判定 ${JUDGE_LABELS[lastJudge]}` : ''}
+        className={`text-lg font-black ${lastJudge ? '' : 'invisible'}`}
+      >
+        {lastJudge ? JUDGE_LABELS[lastJudge] : '·'}
+      </p>
+
+      <div className="ml-auto flex gap-3">
+        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
+      </div>
+
+      <span className="sr-only" aria-live="polite">
+        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
+      </span>
+    </div>
+  );
 }
 
 function ReadyCard({ onStart }: { onStart: () => void }) {
@@ -363,31 +625,5 @@ function ReadyCard({ onStart }: { onStart: () => void }) {
         开始游戏
       </Button>
     </div>
-  );
-}
-
-function EndCard({ stats, cause, onReplay, onHome }: EndCardProps) {
-  return (
-    <section
-      aria-label="本局结束"
-      className="absolute inset-0 flex flex-col items-center justify-center gap-4 rounded-card bg-page/95 p-6"
-    >
-      <h2 className="text-3xl font-black">{cause === 'time' ? '时间到！' : '本局结束'}</h2>
-      <p className="text-5xl font-black tabular-nums text-accent">得分 {stats.score}</p>
-      <div className="flex flex-col items-center gap-1 text-lg text-dim">
-        <p>
-          接住 {stats.caught} / 共 {stats.total}
-        </p>
-        <p>最长连击 {stats.maxCombo}</p>
-      </div>
-      <div className="flex w-full max-w-sm flex-col gap-3">
-        <Button onClick={onReplay} hint="点头或眨眼也可以">
-          再玩一次
-        </Button>
-        <Button variant="secondary" onClick={onHome}>
-          返回首页
-        </Button>
-      </div>
-    </section>
   );
 }

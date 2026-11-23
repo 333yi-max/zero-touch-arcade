@@ -11,9 +11,9 @@ describe('state/machine', () => {
     });
   });
 
-  it('校准过：开始体验直接进游戏，不再花那 30 秒', () => {
+  it('校准过：开始体验直接进选游戏页，不再花那 30 秒', () => {
     expect(next(calibrated, { type: 'choose_camera' })).toMatchObject({
-      screen: 'game',
+      screen: 'select',
       mode: 'camera',
     });
   });
@@ -25,34 +25,40 @@ describe('state/machine', () => {
     });
   });
 
-  it('校准完成：进摄像头模式并记下「已校准」', () => {
+  it('校准完成：进选游戏页并记下「已校准」', () => {
     const s = next({ ...initialState, screen: 'calibration' }, { type: 'calibration_finished' });
-    expect(s).toMatchObject({ screen: 'game', mode: 'camera', calibrated: true });
+    expect(s).toMatchObject({ screen: 'select', mode: 'camera', calibrated: true });
   });
 
   it('跳过 = 用默认量程进摄像头模式，不是演示模式，也不算校准过', () => {
     const s = next({ ...initialState, screen: 'calibration' }, { type: 'calibration_skipped' });
-    expect(s).toMatchObject({ screen: 'game', mode: 'camera', calibrated: false });
+    expect(s).toMatchObject({ screen: 'select', mode: 'camera', calibrated: false });
   });
 
-  it('演示模式仍从首页进，且量程模式是 demo', () => {
-    expect(next(initialState, { type: 'choose_demo' })).toMatchObject({ screen: 'game', mode: 'demo' });
+  it('演示模式也先进选游戏页，量程模式是 demo', () => {
+    expect(next(initialState, { type: 'choose_demo' })).toMatchObject({ screen: 'select', mode: 'demo' });
   });
 
-  it('再玩一次保持上次的输入模式', () => {
-    const s = next({ ...initialState, screen: 'result', mode: 'camera', score: 12 }, { type: 'replay' });
-    expect(s).toMatchObject({ screen: 'game', mode: 'camera', score: 0 });
+  it('pick_game 进对应游戏并清零分数', () => {
+    const s = next(
+      { ...initialState, screen: 'select', mode: 'camera', score: 12 },
+      { type: 'pick_game', game: 'rhythm' },
+    );
+    expect(s).toMatchObject({ screen: 'game', gameId: 'rhythm', score: 0 });
+  });
+
+  it('pick_game 保留输入模式', () => {
+    const s = next({ ...initialState, screen: 'select', mode: 'demo' }, { type: 'pick_game', game: 'star' });
+    expect(s).toMatchObject({ screen: 'game', gameId: 'star', mode: 'demo' });
+  });
+
+  it('结果卡「换个游戏」回选游戏页，输入模式不变', () => {
+    const s = next({ ...initialState, screen: 'game', mode: 'camera', gameId: 'rhythm' }, { type: 'switch_game' });
+    expect(s).toMatchObject({ screen: 'select', mode: 'camera' });
   });
 
   it('返回首页不清掉已校准标记', () => {
     const s = next({ ...calibrated, screen: 'game' }, { type: 'home' });
     expect(s).toMatchObject({ screen: 'start', calibrated: true });
-  });
-
-  it('带分数结束', () => {
-    expect(next({ ...initialState, screen: 'game' }, { type: 'game_finished', score: 7 })).toMatchObject({
-      screen: 'result',
-      score: 7,
-    });
   });
 });

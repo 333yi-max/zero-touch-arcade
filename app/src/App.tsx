@@ -1,6 +1,7 @@
 import { useReducer, useState } from 'react';
 import CalibrationScreen from './components/CalibrationScreen';
 import GameScreen from './components/GameScreen';
+import SelectScreen from './components/SelectScreen';
 import StartScreen from './components/StartScreen';
 import { toEngineCalibration, type CalibrationResult } from './calibration/result';
 import {
@@ -60,12 +61,21 @@ export default function App() {
           />
         ) : null}
 
+        {state.screen === 'select' ? (
+          <SelectScreen
+            onPick={(game) => send({ type: 'pick_game', game })}
+            onBack={() => send({ type: 'home' })}
+          />
+        ) : null}
+
         {state.screen === 'game' ? (
           <GameScreen
+            gameId={state.gameId}
             mode={state.mode}
             calibration={calibration}
             onBack={() => send({ type: 'home' })}
             onDemo={() => send({ type: 'choose_demo' })}
+            onSwitchGame={() => send({ type: 'switch_game' })}
           />
         ) : null}
 

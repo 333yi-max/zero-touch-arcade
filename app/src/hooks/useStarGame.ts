@@ -58,6 +58,8 @@ function hudEquals(a: StarGameHud, b: StarGameHud): boolean {
 export interface StarGameOptions {
   /** 演示模式的辅助瞄准：把原始 cursorX 换成辅助后的值（带积分的纯函数）。 */
   inputTransform?: (rawCursorX: number, state: StarGameState, timeMs: number) => number;
+  /** 结束后点头/眨眼 = 再玩一次。演示模式的虚拟玩家会一直点头，所以要能关掉。 */
+  replayOnConfirm?: boolean;
 }
 
 export function useStarGame(options: StarGameOptions = {}): {
@@ -75,6 +77,8 @@ export function useStarGame(options: StarGameOptions = {}): {
   // transform 每次渲染都可能换，循环里永远取最新的
   const transformRef = useRef<StarGameOptions['inputTransform']>(options.inputTransform);
   transformRef.current = options.inputTransform;
+  const replayOnConfirmRef = useRef<boolean>(options.replayOnConfirm ?? true);
+  replayOnConfirmRef.current = options.replayOnConfirm ?? true;
 
   const replay = (): void => {
     gameRef.current = createInitialState();
@@ -112,7 +116,7 @@ export function useStarGame(options: StarGameOptions = {}): {
       }
       if (stepEvents.length > 0) setEvents(stepEvents);
 
-      if (state.phase === 'over' && confirmBefore) {
+      if (state.phase === 'over' && confirmBefore && replayOnConfirmRef.current) {
         replay();
       }
 
