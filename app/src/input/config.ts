@@ -36,8 +36,10 @@ export const DEFAULT_CONFIG: GestureConfig = {
   nodRearmRatio: 0.25,
   nodHoldMs: 220,
   nodCooldownMs: 500,
-  // 眨眼：双眼同时超过 0.55，保持 180ms；冷却 700ms
-  blinkTrigger: 0.55,
+  // 眨眼：双眼同时超过 0.38，保持 180ms；冷却 700ms。
+  // 0.55 是拿故意眨眼标的；真人自然眨眼弱侧峰值只有 0.47（2026-11-23 线上实测），
+  // 判定取 min(左,右)，0.55 等于把自然眨眼一票否决。0.38 仍高于睁眼基线 0.15~0.25。
+  blinkTrigger: 0.38,
   blinkRearm: 0.25,
   blinkHoldMs: 180,
   blinkCooldownMs: 700,
