@@ -65,7 +65,9 @@ npm run preview    # 本地预览构建产物
 
 ## 校准与量程
 
-真人实测：舒适峰值 yaw 0.36 / 0.40，pitch 0.19，blink 0.65。转头和点头幅度差一倍多，共用一份量程必然顾此失彼，
+真人实测：舒适峰值 yaw 0.36 / 0.40，pitch 0.19，blink 0.65。2026-11-23 另一位测试者线上验收：20 秒走完，
+摘要 `yawRange 0.116 / pitchRange 0.101 / 灵敏度 53%`，点头 3/3 触发，左右转头各 3 次 `cursorX` 全部到 ±1.000；
+自然眨眼仍未验。转头和点头幅度差一倍多，共用一份量程必然顾此失彼，
 所以 `Calibration` 拆成 `range`（光标）和 `pitchRange`（点头）两份，`nodTrig` / `nodRearm` 只认后者。
 
 流程全在 [src/calibration/](src/calibration/)，是纯模块 + 纯 reducer，React 只做外壳 —— 没有 jsdom 也能整条跑一遍：
