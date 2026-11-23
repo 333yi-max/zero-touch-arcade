@@ -14,7 +14,7 @@ const MESSAGES: Record<CameraErrorCode, string> = {
   denied: '你拒绝了摄像头授权。',
   'no-device': '没找到可用的摄像头设备。',
   busy: '摄像头被其他程序占用了，先关掉再试。',
-  model: '手势模型加载失败，可能是 wasm 或模型文件没就位。',
+  model: '人脸模型加载失败，可能是 wasm 或模型文件没就位。',
 };
 
 export class CameraError extends Error {

@@ -10,7 +10,7 @@
 - Vite 8 + React 18.3.1 + TypeScript 5.9
 - Tailwind CSS 4（通过 `@tailwindcss/vite` 插件，无独立配置文件，主题变量写在 `src/index.css` 的 `@theme` 里）
 - Canvas 2D（不用 Three.js）
-- 下一阶段接入 `@mediapipe/tasks-vision`（精确锁 `0.10.14`，本骨架**尚未安装**）
+- 人脸关键点用 `@mediapipe/tasks-vision` 的 FaceLandmarker（精确锁 `0.10.14`）；wasm 与模型都放 `public/`，不走 CDN
 
 依赖版本全部写精确值，不用 `^` `~`，`package-lock.json` 需一并提交。
 
@@ -152,7 +152,10 @@ Day 4 加了：`src/calibration/`（steps / sampling / result / sequencer / stor
 线上验收（无痕 + 假摄像头）：首屏 460ms；校准页 aria-valuetext 正确；无人脸 9 秒内出现「先用演示模式」；
 拒绝摄像头权限后「跳过，使用默认值」→ 游戏页出现「摄像头没打开」卡片 + 演示出口；塞存档直奔游戏、面板显示已校准量程；
 375px 无横向溢出；六个资源 curl 全 200；console 4xx = 0，控制台只剩 MediaPipe 自己打的
-`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。截图见 [docs/shots/](../docs/shots/) 的 17/18/19。。
+`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。截图见 [docs/shots/](../docs/shots/) 的 17–21。
+
+2026-11-23 复查补修（人脸模型文案、权限失败态不再重复渲染取景框）：产物 `assets/index-BJABjniB.js`，
+**待重发**；验证截图 `20-loading-copy-fixed.png`、`21-permission-fallback-fixed.png`，详见施工日志。
 
 站点是 SPA，构建产物是纯静态文件，`vite.config.ts` 已设 `base: './'`，资源走相对路径，因此可以挂在任意子路径下。
 

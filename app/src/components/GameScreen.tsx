@@ -122,12 +122,10 @@ export default function GameScreen({
         </p>
       ) : null}
 
-      {mode === 'camera' && problem ? (
-        <CameraProblemCard message={problem} onDemo={onDemo} />
-      ) : null}
-
       {mode === 'demo' ? (
         <DemoCanvas sceneRef={sceneRef} paused={paused} />
+      ) : problem ? (
+        <CameraProblemCard message={problem} onDemo={onDemo} />
       ) : (
         <CameraStage
           videoRef={videoRef}

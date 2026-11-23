@@ -84,7 +84,7 @@ export default function CameraStage({
   }, [source, overlay]);
 
   const status = !frame
-    ? '正在加载手势模型，第一次约 2 秒…'
+    ? '正在加载人脸模型，首次需下载约 13 MB…'
     : !frame.present
       ? '没找到人脸，把脸对准取景框中间。'
       : `已捕捉人脸 · 加速：${source?.delegate === 'CPU' ? 'CPU' : 'GPU 优先'}`;
