@@ -61,7 +61,7 @@ Day 6 的 HUD 变高了，这 15px 就露出来了。两个游戏的摄像头画
 `canvasBottom 801 ≤ 802`，一屏可见。123 条测试不受影响；复查截图 `39-day6-select.png`、
 `40-day6-rhythm-result.png`、`41-day6-375.png`、`42-day6-camera-star.png`，证据 `day6-local-audit.json`。
 
-**提交**：`________`。
+**提交**：`421dfb1`。
 
 ---
 
