@@ -142,14 +142,17 @@ Day 4 加了：`src/calibration/`（steps / sampling / result / sequencer / stor
 
 1. 真人面前验一次自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能要放宽；放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。转头和点头的量级不用肉眼量了 —— 校准摘要直接把 `yawRange / pitchRange` 写在屏幕上；面板的峰值保持和 CSV 导出留着做逐帧核对。
 2. 游戏本体：光标命中判定与计分。
-3. 校准这套改动还没发布，线上仍是 Day 3 的构建（`assets/index-CoscUwW7.js`）。
+3. 论坛帖「我改了什么」从 [docs/qoder-log.md](../docs/qoder-log.md) 取素材（Day 3 的两个线上 bug、Day 4 的校准与发布各有记录，含提交号）。
 
 ## 部署到 Qoder Sites
 
 **线上地址（公开，免登录）**：<https://zero-touch-arcade-isyzlt2g2ce.qoder.zone>
-`access_mode: public`，2026-11-22 发布，同日 21:45 重新发布到当前构建（`assets/index-CoscUwW7.js`，含真实摄像头、favicon 与 GPU 文案修正）。
-线上验收：无痕窗口进 game 页，7 个请求全部同源、零 4xx，控制台只剩 MediaPipe 自己打的
-`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。
+`access_mode: public`，2026-11-22 首发，同日 21:45 重发 GPU 文案修正（`assets/index-CoscUwW7.js`）；
+2026-11-23 重新发布 Day 4 校准构建（`assets/index-QoICF3dh.js`，校准接真 + 独立俯仰量程，dist 共 23 MB）。
+线上验收（无痕 + 假摄像头）：首屏 460ms；校准页 aria-valuetext 正确；无人脸 9 秒内出现「先用演示模式」；
+拒绝摄像头权限后「跳过，使用默认值」→ 游戏页出现「摄像头没打开」卡片 + 演示出口；塞存档直奔游戏、面板显示已校准量程；
+375px 无横向溢出；六个资源 curl 全 200；console 4xx = 0，控制台只剩 MediaPipe 自己打的
+`INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`。截图见 [docs/shots/](../docs/shots/) 的 17/18/19。。
 
 站点是 SPA，构建产物是纯静态文件，`vite.config.ts` 已设 `base: './'`，资源走相对路径，因此可以挂在任意子路径下。
 

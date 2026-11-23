@@ -106,6 +106,26 @@ Playwright + 假摄像头跑构建产物验了：第 1 步渲染与 `aria-valuet
 
 **提交**：`998d34c`。
 
+### 发布（2026-11-23）
+
+校准构建上线，链接不变。**`prepare_site` 的 schema 变了**：现在必须传 `actionId`（每次发布一个新 UUID，重试时同参复用），
+这次用新 actionId 重新发布到同一个 siteId，线上资产从 `index-CoscUwW7.js`（Day 3）换成 `index-QoICF3dh.js`（Day 4，324.93 kB）。
+
+线上验收（无痕 + 假摄像头）：首屏 460ms；第 1 步 `aria-valuetext` =「第 1 步 · 正对屏幕，共 5 步」；
+无人脸 9 秒内「先用演示模式」出现；语音开关写 `zt.settings.v1` 且刷新后保持；「跳过，使用默认值」进摄像头模式且
+`zt.calibration.v1` 仍是 null；塞存档后「开始体验」直奔游戏、面板显示「已校准 yawRange 0.150 / pitchRange 0.100」；
+「重新校准」回到校准页；375px 无横向溢出；六个资源 curl 全 200；console 4xx = 0，
+只剩 MediaPipe 自己的两条 XNNPACK INFO。
+
+**拒绝摄像头权限的自动化**：不传 `--use-fake-ui-for-media-stream`（那会直接放行权限），改走 CDP `Browser.setPermission`。
+坑：这个 Chrome 版本的枚举名既不是 `video_capture` 也不是 `videoCapture`，两个都报
+`Invalid PermissionDescriptor name`，正确的是 **`camera`**。拒绝后校准页和游戏页都正确显示
+「摄像头没打开」卡片 + 「先用演示模式」按钮（验收清单里的「无法使用摄像头」是旧文案，实际标题是「摄像头没打开」）。
+
+截图：`docs/shots/17-live-calibration.png`、`18-live-saved-calibration.png`、`19-live-permission-fallback.png`。
+
+**提交**：`<待回填>`。
+
 ---
 
 ## 2026-11-22 · Day 3 收尾：两个本地永远看不见的 bug
