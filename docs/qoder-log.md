@@ -105,7 +105,7 @@ npm run build ✅（js 410.49 kB / gzip 125.40 kB，css 31.43 kB / 6.79 kB）；
 1280 ready 与对局（演示 AI 已在敲，得分 30/敲中 3）、73/74 同档 375 无溢出、75 reduced-motion 档、
 76/77 选游戏页四卡 1280/375；网络 4xx/5xx = 0、console error = 0 ✅。
 
-**提交**：`<hash>`。
+**提交**：`c26cb55`。
 
 ---
 
