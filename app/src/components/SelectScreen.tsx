@@ -1,18 +1,46 @@
 import { useEffect, useRef } from 'react';
-import { AudioLines, Star, Worm, type LucideIcon } from 'lucide-react';
+import { AudioLines, Star, Timer, Users, Worm, type LucideIcon } from 'lucide-react';
 import { createSpeaker, type Speaker } from '../calibration/speech';
 import { readStoredSettings } from '../calibration/storage';
 import type { GameId } from '../state/machine';
 import Button from './Button';
 import TopBar from './TopBar';
 
-const GAMES: { id: GameId; name: string; line: string; icon: LucideIcon }[] = [
-  { id: 'star', name: '接星星', line: '转头移动挡板，接住落下的星星', icon: Star },
-  { id: 'rhythm', name: '节奏点头', line: '跟着节拍点头', icon: AudioLines },
-  { id: 'snake', name: '霓虹贪吃蛇', line: '转头控制小蛇，吃光球连击得分', icon: Worm },
+const GAMES: {
+  id: GameId;
+  name: string;
+  line: string;
+  time: string;
+  who: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    id: 'star',
+    name: '接星星',
+    line: '转头移动挡板，接住落下的星星',
+    time: '漏 5 颗星结束',
+    who: '第一次玩首选',
+    icon: Star,
+  },
+  {
+    id: 'rhythm',
+    name: '节奏点头',
+    line: '跟着节拍点头',
+    time: '16 拍 · 约 20 秒',
+    who: '喜欢音乐节奏',
+    icon: AudioLines,
+  },
+  {
+    id: 'snake',
+    name: '霓虹贪吃蛇',
+    line: '转头控制小蛇，吃光球连击得分',
+    time: '90 秒一局',
+    who: '想挑战反应力',
+    icon: Worm,
+  },
 ];
 
-const ANNOUNCE = `三个游戏。${GAMES.map((g) => `${g.name}，${g.line}`).join('。')}。点大按钮选一个。`;
+const ANNOUNCE = `三个游戏。${GAMES.map((g) => `${g.name}，${g.line}`).join('。')}。点卡片上的开始按钮选一个。`;
 
 interface SelectScreenProps {
   onPick: (game: GameId) => void;
@@ -48,16 +76,33 @@ export default function SelectScreen({ onPick, onBack }: SelectScreenProps) {
         </p>
       </div>
 
-      <div className="animate-fade-in-up stagger-2 flex flex-col gap-5">
+      <div className="animate-fade-in-up stagger-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {GAMES.map((game) => (
-          <Button
+          <article
             key={game.id}
-            onClick={() => onPick(game.id)}
-            hint={game.line}
-            icon={<game.icon size={24} strokeWidth={2} />}
+            className="card-surface flex flex-col gap-3 rounded-card border border-edge p-5 shadow-card transition duration-200 ease-out-soft hover:border-accent/50 hover:bg-card-hi"
           >
-            {game.name}
-          </Button>
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent">
+                <game.icon size={26} strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <h3 className="text-2xl font-black tracking-[0.04em]">{game.name}</h3>
+            </div>
+            <p className="text-lg leading-snug text-dim">{game.line}</p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-base font-semibold text-dim">
+              <span className="inline-flex items-center gap-1.5">
+                <Timer size={16} aria-hidden="true" className="text-ring" />
+                {game.time}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Users size={16} aria-hidden="true" className="text-ring" />
+                {game.who}
+              </span>
+            </div>
+            <Button className="mt-auto" onClick={() => onPick(game.id)}>
+              开始
+            </Button>
+          </article>
         ))}
       </div>
 

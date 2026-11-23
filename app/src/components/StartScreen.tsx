@@ -49,8 +49,8 @@ export default function StartScreen({
         className="bg-arcade pointer-events-none absolute -inset-x-5 -top-8 -bottom-10 -z-10"
       />
 
-      <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-        <div className="flex flex-col gap-10">
+      <div className="grid gap-10 lg:grid-cols-5 lg:items-start">
+        <div className="flex flex-col gap-10 lg:col-span-3">
       <header className="animate-fade-in-up flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <p className="text-sm font-bold tracking-[0.3em] text-accent">
@@ -118,7 +118,7 @@ export default function StartScreen({
       </p>
         </div>
 
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-10">
+        <aside className="flex flex-col gap-4 lg:col-span-2 lg:sticky lg:top-8">
           <PreviewCard />
           <div className="grid grid-cols-3 gap-3">
             {STATS.map(([value, label]) => (

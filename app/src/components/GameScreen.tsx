@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { RefObject } from 'react';
 import { useDebugTrace } from '../hooks/useDebugTrace';
 import { useGesture } from '../hooks/useGesture';
@@ -34,7 +34,7 @@ import type { SnakeFx } from './SnakeGame';
 import { START_LIVES } from '../game/starGame';
 import { BOOST_MS } from '../game/snakeGame';
 import TopBar from './TopBar';
-import { Info, PlayCircle, Sparkles, Video, Volume2, VolumeX } from 'lucide-react';
+import { Info, Lightbulb, PlayCircle, Sparkles, Video, Volume2, VolumeX } from 'lucide-react';
 
 interface GameScreenProps {
   gameId: GameId;
@@ -371,35 +371,31 @@ function StarSession({
     ) : null;
 
   return (
-    <>
-      <StarHudBar
-        hud={hud}
-        muted={muted}
-        onMuteToggle={toggleMuted}
-        onPauseToggle={() => (latchRef.current.pause = true)}
-      />
-      {mode === 'camera' ? (
-        // 预览压成小窗：4:3 全宽会把下面的游戏画布整个挤出屏幕
-        <div className="mx-auto w-full max-w-xs">
-          <CameraStage
-            videoRef={camera.videoRef}
-            source={camera.source}
-            mirrored={camera.mirrored}
-            overlay={camera.overlay}
-            paused={gamePaused}
-            frame={frame}
-            onDemo={camera.onDemo}
-          />
-        </div>
-      ) : null}
+    <SessionLayout
+      showCamera={mode === 'camera'}
+      camera={camera}
+      cameraPaused={gamePaused}
+      frame={frame}
+      hud={
+        <StarHudBar
+          hud={hud}
+          muted={muted}
+          onMuteToggle={toggleMuted}
+          onPauseToggle={() => (latchRef.current.pause = true)}
+        />
+      }
+      tips={GAME_TIPS.star}
+    >
       <StarGame
         gameRef={gameRef}
         paused={gamePaused}
         fxRef={fxRef}
         overlay={overlayNode}
-        frameClass={mode === 'camera' ? 'max-h-[36vh]' : undefined}
+        frameClass={
+          mode === 'camera' ? 'max-h-[36vh] xl:max-h-[80vh]' : 'max-h-[60vh] xl:max-h-[80vh]'
+        }
       />
-    </>
+    </SessionLayout>
   );
 }
 
@@ -528,33 +524,30 @@ function RhythmSession({
     ) : null;
 
   return (
-    <>
-      <RhythmHudBar
-        hud={hud}
-        muted={muted}
-        onMuteToggle={toggleMuted}
-        lastJudge={lastJudge}
-      />
-      {mode === 'camera' ? (
-        <div className="mx-auto w-full max-w-xs">
-          <CameraStage
-            videoRef={camera.videoRef}
-            source={camera.source}
-            mirrored={camera.mirrored}
-            overlay={camera.overlay}
-            paused={false}
-            frame={frame}
-            onDemo={camera.onDemo}
-          />
-        </div>
-      ) : null}
+    <SessionLayout
+      showCamera={mode === 'camera'}
+      camera={camera}
+      cameraPaused={false}
+      frame={frame}
+      hud={
+        <RhythmHudBar
+          hud={hud}
+          muted={muted}
+          onMuteToggle={toggleMuted}
+          lastJudge={lastJudge}
+        />
+      }
+      tips={GAME_TIPS.rhythm}
+    >
       <RhythmGame
         gameRef={gameRef}
         fxRef={fxRef}
         overlay={overlayNode}
-        frameClass={mode === 'camera' ? 'max-h-[36vh]' : undefined}
+        frameClass={
+          mode === 'camera' ? 'max-h-[36vh] xl:max-h-[80vh]' : 'max-h-[60vh] xl:max-h-[80vh]'
+        }
       />
-    </>
+    </SessionLayout>
   );
 }
 
@@ -704,34 +697,101 @@ function SnakeSession({
     ) : null;
 
   return (
-    <>
-      <SnakeHudBar
-        hud={hud}
-        muted={muted}
-        onMuteToggle={toggleMuted}
-        onPauseToggle={() => (latchRef.current.pause = true)}
-      />
-      {mode === 'camera' ? (
-        <div className="mx-auto w-full max-w-xs">
-          <CameraStage
-            videoRef={camera.videoRef}
-            source={camera.source}
-            mirrored={camera.mirrored}
-            overlay={camera.overlay}
-            paused={gamePaused}
-            frame={frame}
-            onDemo={camera.onDemo}
-          />
-        </div>
-      ) : null}
+    <SessionLayout
+      showCamera={mode === 'camera'}
+      camera={camera}
+      cameraPaused={gamePaused}
+      frame={frame}
+      hud={
+        <SnakeHudBar
+          hud={hud}
+          muted={muted}
+          onMuteToggle={toggleMuted}
+          onPauseToggle={() => (latchRef.current.pause = true)}
+        />
+      }
+      tips={GAME_TIPS.snake}
+    >
       <SnakeGame
         gameRef={gameRef}
         paused={gamePaused}
         fxRef={fxRef}
         overlay={overlayNode}
-        frameClass={mode === 'camera' ? 'max-h-[36vh]' : undefined}
+        frameClass={
+          mode === 'camera' ? 'max-h-[36vh] xl:max-h-[80vh]' : 'max-h-[60vh] xl:max-h-[80vh]'
+        }
       />
-    </>
+    </SessionLayout>
+  );
+}
+
+// ———— 会话布局外壳：xl 两栏（左画布 / 右 HUD+预览+提示），窄屏上下堆叠 ————
+
+interface SessionLayoutProps {
+  showCamera: boolean;
+  camera: SessionProps['camera'];
+  cameraPaused: boolean;
+  frame: RawFrame | null;
+  hud: ReactNode;
+  tips: readonly string[];
+  children: ReactNode;
+}
+
+function SessionLayout({
+  showCamera,
+  camera,
+  cameraPaused,
+  frame,
+  hud,
+  tips,
+  children,
+}: SessionLayoutProps) {
+  return (
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="order-2 min-w-0 xl:order-1">{children}</div>
+      <div className="order-1 flex flex-col gap-4 xl:order-2">
+        {showCamera ? (
+          <div className="mx-auto w-full max-w-80 xl:max-w-none">
+            <CameraStage
+              videoRef={camera.videoRef}
+              source={camera.source}
+              mirrored={camera.mirrored}
+              overlay={camera.overlay}
+              paused={cameraPaused}
+              frame={frame}
+              onDemo={camera.onDemo}
+            />
+          </div>
+        ) : null}
+        {hud}
+        <TipsCard tips={tips} />
+      </div>
+    </div>
+  );
+}
+
+const GAME_TIPS: Record<'star' | 'rhythm' | 'snake', readonly string[]> = {
+  star: ['转头左右移动挡板', '金色星星分值更高', '点头开始，张嘴暂停'],
+  rhythm: ['看收缩环，环与目标圈重合时点头', '连击只数 Perfect，Good / Miss 都清零'],
+  snake: ['转头控制方向，小蛇不会停', '连续吃光球叠连击倍率', '点头开启闪耀，双倍得分', '张嘴暂停'],
+};
+
+function TipsCard({ tips }: { tips: readonly string[] }) {
+  return (
+    <aside className="card-surface flex flex-col gap-2.5 rounded-card border border-edge px-5 py-4 shadow-card">
+      <h3 className="flex items-center gap-2 text-lg font-bold">
+        <Lightbulb size={18} aria-hidden="true" className="shrink-0 text-accent" />
+        玩法提示
+      </h3>
+      <ul className="flex flex-col gap-1.5 text-base leading-snug text-dim">
+        {tips.map((tip) => (
+          <li key={tip} className="flex gap-2.5">
+            <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent/60" />
+            {tip}
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }
 
@@ -769,7 +829,7 @@ interface StarHudBarProps extends MutedControls {
 
 function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card">
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
       <p className="text-2xl font-black tabular-nums">
         <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
           得分 {hud.score}
@@ -798,7 +858,7 @@ function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps
         </p>
       ) : null}
 
-      <div className="ml-auto flex gap-3">
+      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
         <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
         <button
           type="button"
@@ -830,7 +890,7 @@ interface RhythmHudBarProps extends MutedControls {
 
 function RhythmHudBar({ hud, muted, onMuteToggle, lastJudge }: RhythmHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card">
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
       <p className="text-2xl font-black tabular-nums">
         <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
           得分 {hud.score}
@@ -858,7 +918,7 @@ function RhythmHudBar({ hud, muted, onMuteToggle, lastJudge }: RhythmHudBarProps
         {lastJudge ? JUDGE_LABELS[lastJudge] : '·'}
       </p>
 
-      <div className="ml-auto flex gap-3">
+      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
         <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
       </div>
 
@@ -881,7 +941,7 @@ interface SnakeHudBarProps extends MutedControls {
 
 function SnakeHudBar({ hud, muted, onMuteToggle, onPauseToggle }: SnakeHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card">
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
       <p className="text-2xl font-black tabular-nums">
         <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
           得分 {hud.score}
@@ -910,7 +970,7 @@ function SnakeHudBar({ hud, muted, onMuteToggle, onPauseToggle }: SnakeHudBarPro
         </p>
       ) : null}
 
-      <div className="ml-auto flex gap-3">
+      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
         <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
         <button
           type="button"

@@ -48,7 +48,7 @@ export default function App() {
     <div className="flex min-h-dvh flex-col">
       <main
         className={`mx-auto flex w-full flex-1 flex-col px-5 py-8 sm:px-8 sm:py-12 ${
-          wide ? 'max-w-6xl' : 'max-w-3xl'
+          wide ? 'max-w-7xl' : 'max-w-3xl'
         }`}
       >
         {state.screen === 'start' ? (
@@ -93,7 +93,7 @@ export default function App() {
         ) : null}
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl px-5 pb-8 text-base text-dim sm:px-8">
+      <footer className="mx-auto w-full max-w-7xl px-5 pb-8 text-base text-dim sm:px-8">
         零触控游乐场 · 纯前端，无账号、无后端、不上传任何画面
       </footer>
     </div>

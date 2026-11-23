@@ -52,7 +52,14 @@ function specsFromArgs(argv) {
 async function clickByText(page, text) {
   const ok = await page.evaluate((t) => {
     const buttons = Array.from(document.querySelectorAll('button'));
-    const b = buttons.find((x) => (x.textContent ?? '').includes(t));
+    // 首选按钮文案直接命中；选游戏页卡片按钮文案是「开始」，退回按卡片标题找
+    let b = buttons.find((x) => (x.textContent ?? '').includes(t));
+    if (!b) {
+      const card = Array.from(document.querySelectorAll('article')).find(
+        (x) => (x.textContent ?? '').includes(t),
+      );
+      b = card ? card.querySelector('button') : null;
+    }
     if (!b) return false;
     b.scrollIntoView({ block: 'center' });
     b.click();

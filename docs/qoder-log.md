@@ -28,6 +28,25 @@ css 29.08 kB（gzip 6.43 kB）、html 0.77 kB（gzip 0.53 kB）。
 **验证**：npm test 145/145 ✅；npm run build ✅；截图脚本 4 张（1280 首页/选游戏/贪吃蛇、375 首页）
 网络 4xx/5xx = 0、console error = 0 ✅。
 
+### 第 2 轮 · 全宽布局收口
+
+**改了什么**：
+- App.tsx：wide 屏容器 max-w-6xl → max-w-7xl（1280 满宽利用），校准页维持 max-w-3xl 窄栏；页脚同步放宽。
+- 首页 StartScreen：两栏 grid 改 `lg:grid-cols-5`（文案 3 列 / 示意+数据卡 2 列），右侧栏 `lg:sticky lg:top-8`。
+- 选游戏页 SelectScreen：纵向大按钮列表 → 卡片网格（sm:2 列、lg:3 列），每张卡 = 图标 + 名称 + 一句话玩法 + 时长 + 适用人群 + 「开始」按钮；「再念一遍 / 返回首页」留在底部。
+- 游戏页 GameScreen：抽 `SessionLayout` 外壳，xl 起两栏（左画布尽量大 / 右栏竖排 HUD + 玩法提示卡），窄屏上下堆叠、HUD 在画布上方；摄像头预览 320px 小窗贴右栏顶部（xl 撑满右栏）；三个 HudBar 在 xl 改竖排；画布高度钳位放宽为 `xl:max-h-[80vh]`。
+- 截图脚本 clickByText 加兜底：选游戏页卡片按钮文案是「开始」，按卡片标题匹配。
+
+**发现 / 根因 / 修法**：
+1. 卡片化后截图脚本路由失效——按钮 textContent 从游戏名变成「开始」。修法：shots.mjs 里找不到按钮时退回按 `article` 卡片标题定位再点其中按钮。
+2. 「时长」字段不能编：节奏点头 16 拍 × 1s ≈ 20 秒（BPM=60、BEATS=16）；接星星是命数制没有时限，如实写「漏 5 颗星结束」（START_LIVES=5、SPAWN_INTERVAL_MS=750）；贪吃蛇 90 秒（GAME_DURATION_MS=90000）。不写拍脑袋的「3 分钟一局」。
+
+**验证**：npm test 145/145 ✅；npm run build ✅（js 391.47 kB / gzip 121.38 kB，css 30.50 kB / 6.66 kB）；
+截图 57–66 共 10 张（1280/1440/375 三档 × 首页/选游戏/接星星/贪吃蛇/节奏点头，66 为 reduced-motion 档）：
+三档无横向溢出，xl 两栏、窄屏堆叠均符合预期；网络 4xx/5xx = 0、console error = 0 ✅。
+
+**提交**：见回填提交。
+
 ---
 
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡
