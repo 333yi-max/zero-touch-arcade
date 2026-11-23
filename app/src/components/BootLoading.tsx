@@ -1,4 +1,4 @@
-import { StarMark } from './StartScreen';
+import { StarMark } from './StarMark';
 
 /** 启动页：约 0.9 秒的品牌过场，让首屏有仪式感，不做假进度条。 */
 export default function BootLoading() {
