@@ -1,0 +1,30 @@
+{
+  "site": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone",
+  "when": "2026-11-23T17:59:23.763Z",
+  "demo": {
+    "selectOk": true,
+    "over": true,
+    "hasA": false,
+    "hasShare": true,
+    "hasSwitch": true,
+    "hasBest": true
+  },
+  "viewport375": {
+    "vw": 375,
+    "scrollW": 375
+  },
+  "camera": {
+    "camSelect": true,
+    "camReady": true,
+    "layout": {
+      "vw": 1258,
+      "vh": 802,
+      "scrollW": 1243,
+      "previewW": 316,
+      "canvasBottom": 801,
+      "inView": true
+    }
+  },
+  "bad": [],
+  "errors": []
+}
