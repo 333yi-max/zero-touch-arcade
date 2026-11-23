@@ -55,7 +55,7 @@ function Toggle({
       type="button"
       aria-pressed={pressed}
       onClick={onChange}
-      className="flex items-center justify-between gap-3 rounded-lg border-2 border-edge bg-page px-3 py-2 text-left text-base"
+      className="flex items-center justify-between gap-3 rounded-lg border-2 border-edge bg-page px-3 py-2 text-left text-base min-h-11"
     >
       <span>{label}</span>
       <span className="font-mono font-bold text-accent">{pressed ? on : off}</span>
@@ -77,7 +77,7 @@ function PanelButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex-1 rounded-lg border-2 border-edge bg-page px-3 py-2 text-base font-bold disabled:opacity-40"
+      className="flex-1 rounded-lg border-2 border-edge bg-page px-3 py-2 text-base font-bold disabled:opacity-40 min-h-11"
     >
       {children}
     </button>
@@ -110,7 +110,7 @@ export default function DebugPanel({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border-2 border-edge px-3 py-1 text-base"
+          className="rounded-lg border-2 border-edge px-3 py-2 text-base min-h-11"
         >
           关闭（D）
         </button>

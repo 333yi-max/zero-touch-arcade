@@ -138,7 +138,7 @@ export default function StartScreen({
             <button
               type="button"
               onClick={onStartDemo}
-              className="mt-1 inline-flex w-fit items-center gap-2 self-start rounded-full border-2 border-accent/60 bg-accent/10 px-4 py-1.5 text-base font-bold text-accent transition duration-200 ease-out-soft hover:bg-accent/20"
+              className="mt-1 inline-flex min-h-11 w-fit items-center gap-2 self-start rounded-full border-2 border-accent/60 bg-accent/10 px-4 py-2 text-base font-bold text-accent transition duration-200 ease-out-soft hover:bg-accent/20"
             >
               <PlayCircle size={16} aria-hidden="true" />
               演示模式

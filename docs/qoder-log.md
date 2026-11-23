@@ -213,6 +213,40 @@ ring ≈8.9:1，正文最弱组合 ≥4.5:1 ✅；网络 4xx/5xx = 0、console e
 
 **提交**：`2f8f3b5`。
 
+### 第 8 轮 · 无障碍与细节巡检
+
+**改了什么**：
+- 全站巡检：焦点环、键盘走查、对比度核算、reduced-motion 实测、四档宽度截图。
+- 修 2 处热区不足 44px（WCAG 2.5.5 目标尺寸）：调试面板「关闭（D）」≈34px、
+  面板 Toggle/PanelButton ≈40px → 加 `min-h-11`；首页评委块的「演示模式」胶囊 ≈40px →
+  `py-1.5` 改 `py-2` + `min-h-11`。
+
+**发现 / 根因 / 修法**：
+1. 焦点环第一次实测「颜色不对」：按钮聚焦后立刻读 computed outline-color 是 currentColor
+   （主按钮上是深色，在深色页面上几乎看不见）。根因：Button 带 `transition duration-200`，
+   outline-color 从 currentColor 过渡到 ring 蓝要 200ms，读得太早。等 300ms 后再读全是
+   `rgb(88,196,255)`。结论：焦点环本身没问题，是验收脚本的读取时机问题——巡检脚本
+   （临时文件，跑完即删）修正后全绿。
+2. 无头 Edge 默认 `prefers-reduced-motion: reduce`（matchMedia 实测 true），所以巡检脚本里
+   transitionDuration 显示 1e-05s。这正好验证了全局降级规则：动画/过渡全部压到 0.01ms。
+3. Tab 走查中出现 BODY 焦点点：焦点循环绕回时浏览器把焦点交给页面根（真浏览器里是地址栏），
+   不是缺陷。
+
+**验证**：
+- 键盘走查（puppeteer 真实 Tab）：首页 7 个焦点点全部落在 button、焦点环 3px solid
+  rgb(88,196,255) 全部可见；开发日志页 3 个焦点点同上 ✅
+- reduced-motion 实测：fade-in-up / fall-star / pulse 动画时长全部 1e-05s ✅
+- 对比度核算：dim 对卡片底 ≈10.9:1、对页面底 ≈12.6:1、accent 对卡片底 ≈12.3:1、
+  ring 对卡片底 ≈8.9:1、accent-fg 对 accent ≈13.9:1——正文最弱组合 ≥4.5:1 ✅
+- 已有资产盘点：lang="zh-CN"、全局 :focus-visible 环、五个游戏画布 role="img" +
+  aria-label、ProgressRing aria-valuenow/max/min/valuetext、暂停/音效按钮 aria-label、
+  sr-only 倒计时播报全部在位，本轮无新增缺口。
+- npm test 192/192 ✅；npm run build ✅（js 430.04 kB / gzip 131.61 kB，css 32.42 kB / 6.97 kB）；
+  截图 100–105：首页 375/768/1280/1440 四档 + 选游戏页 375/1280，无横向溢出、栅格按档位
+  收放正常；网络 4xx/5xx = 0、console error = 0 ✅。
+
+**提交**：`__待回填__`。
+
 ---
 
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡
