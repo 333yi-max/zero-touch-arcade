@@ -101,7 +101,7 @@ calibrationStorage 的 9 条用例原样通过。默认开、刷新后保留（�
 `28-day5-375.png`、`29-day5-camera-ready.png`，证据 `day5-local-audit.json`。
 产物 `index-CumlYZPo.js`（336.76 kB / gzip 106.04 kB），**待发布**。
 
-**提交**：`________`。
+**提交**：`4fc730d`。
 
 ---
 
