@@ -1,7 +1,6 @@
 import { useReducer, useState } from 'react';
 import CalibrationScreen from './components/CalibrationScreen';
 import GameScreen from './components/GameScreen';
-import ResultScreen from './components/ResultScreen';
 import StartScreen from './components/StartScreen';
 import { toEngineCalibration, type CalibrationResult } from './calibration/result';
 import {
@@ -66,17 +65,7 @@ export default function App() {
             mode={state.mode}
             calibration={calibration}
             onBack={() => send({ type: 'home' })}
-            onFinish={(score) => send({ type: 'game_finished', score })}
             onDemo={() => send({ type: 'choose_demo' })}
-          />
-        ) : null}
-
-        {state.screen === 'result' ? (
-          <ResultScreen
-            score={state.score}
-            mode={state.mode}
-            onReplay={() => send({ type: 'replay' })}
-            onHome={() => send({ type: 'home' })}
           />
         ) : null}
 
