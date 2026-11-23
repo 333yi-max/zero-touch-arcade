@@ -30,14 +30,19 @@ npm run build      # 先 tsc --noEmit 做类型检查，再产出 dist/
 npm run preview    # 本地预览构建产物
 ```
 
-## 当前状态：Day 6，两个游戏 + 选游戏页 + 统一结果卡可玩
+## 当前状态：Day 7，五个游戏 + 选游戏页 + 统一结果卡 + 开发日志页可玩
 
-两个三分钟小游戏都齐了，选游戏页在中间衔接。规则全部在 `src/game/` 下（纯函数，node 里能整局模拟），
-React 只做外壳。引擎输出的 `cursorX` 实时控制挡板（接星星），`confirm` 在节奏点头里就是「拍点点头」，
-也用于开局和「再玩一次」，`pause`（张嘴）只存在于接星星。音效全部 Web Audio 合成，零音频文件；
-每个声音都有画面替身，`prefers-reduced-motion` 下粒子/红光/发光自动降级。
+五个游戏都齐了（接星星 / 节奏点头 / 霓虹贪吃蛇 / 打地鼠 / 吹蜡烛），选游戏页在中间衔接，另有一页
+「开发日志」放版本记录、踩过的坑与已知限制。规则全部在 `src/game/` 下（纯函数，node 里能整局模拟），
+React 只做外壳。引擎输出的 `cursorX` 实时控制挡板/准星（接星星、贪吃蛇、打地鼠），`confirm` 是「拍点点头」，
+也用于开局和「再玩一次」；`pause`（张嘴）存在于接星星和贪吃蛇，吹蜡烛里张嘴是主操作（吹气）、
+游戏内不设暂停。音效全部 Web Audio 合成，零音频文件；每个声音都有画面替身，
+`prefers-reduced-motion` 下粒子/红光/发光自动降级。
 
-状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → select → game`：
+当前构建体积：JS 430.06 kB（gzip 131.62 kB）+ CSS 32.42 kB（gzip 6.97 kB），
+加上本地 wasm（19 MB）与模型（3.6 MB），`dist/` 共约 23 MB。测试 192 条（见下）。
+
+状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → select → game`，`devlog` 可从首页直达：
 
 | 事件 | 从 | 到 | 说明 |
 | --- | --- | --- | --- |
@@ -46,8 +51,9 @@ React 只做外壳。引擎输出的 `cursorX` 实时控制挡板（接星星）
 | `choose_demo` | start | select | 演示模式（虚拟玩家，量程恒为默认值） |
 | `calibration_finished` | calibration | select | 采到数 → `mode='camera'`，置 `calibrated` 并写盘 |
 | `calibration_skipped` | calibration | select | 「跳过，使用默认值」→ 摄像头模式，**不写盘** |
-| `pick_game {game}` | select | game | 进对应游戏，`gameId ∈ {'star','rhythm'}`，分数清零 |
+| `pick_game {game}` | select | game | 进对应游戏，`gameId ∈ {'star','rhythm','snake','whack','candle'}`，分数清零 |
 | `switch_game` | game | select | 结果卡「换个游戏」，输入模式不变 |
+| `open_devlog` | start | devlog | 首页「开发日志」入口，返回仍回首页 |
 | `home` | 任意 | start | 返回按钮 |
 
 「再玩一次」是游戏内动作（重置逻辑状态），不走状态机 —— 结束后确认手势要能直接重开。
@@ -57,10 +63,14 @@ React 只做外壳。引擎输出的 `cursorX` 实时控制挡板（接星星）
 
 - `StartScreen` — 大标题 + 副标题 + 入口；有存档时「开始体验」直奔选游戏页，并多出「重新校准」
 - `CalibrationScreen` — 4 步采样 + 眨眼确认，见下节
-- `SelectScreen` — 接星星 / 节奏点头两个大按钮（≥64px），挂载时按 `zt.settings.v1.voice` 播报两个游戏名，可点「再念一遍」
-- `GameScreen` — 按 `gameId` 挂 `StarSession` 或 `RhythmSession`（各自持有纯逻辑 hook、音效、覆盖层）；结束统一走 `ResultCard`（大分数、评价、最佳成绩、再玩一次/换个游戏/回到首页/下载分享卡）
+- `SelectScreen` — 五个游戏卡片网格（sm:2 列、lg:3 列），每张卡 = 图标 + 名称 + 一句话玩法 + 时长 + 适用人群 + 「开始」按钮；挂载时按 `zt.settings.v1.voice` 播报游戏名，可点「再念一遍」
+- `GameScreen` — 按 `gameId` 挂 `StarSession` / `RhythmSession` / `SnakeSession` / `WhackSession` / `CandleSession`（各自持有纯逻辑 hook、音效、覆盖层）；结束统一走 `ResultCard`（大分数、评价、最佳成绩、再玩一次/换个游戏/回到首页/下载分享卡）
+- `DevlogScreen` — 开发日志页：版本记录、三条真实踩坑故事、数据卡、已知限制，内容取自本仓库 git log 与施工日志
 
-测试 123 条：`GestureEngine` 17 + sequencer 14 + `starGame` 14 + `rhythmGame` 14 + `demoRhythm` 3 + `bestScores` 9 + `shareCard` 5 + storage 10 + `landmarksToFrame` 9 + machine 10 + sampling 7 + `demoAim` 7 + `buildCsv` 5。
+测试 192 条：`whackGame` 20 + `gestureEngine` 17 + `snakeGame` 16 + `candleGame` 15 + `starGame` 14 +
+`rhythmGame` 14 + `calibrationSequencer` 14 + `machine` 11 + `calibrationStorage` 10 + `faceFrame` 9 +
+`bestScores` 9 + `demoAim` 7 + `calibrationSampling` 7 + `demoSnake` 6 + `traceCsv` 5 + `shareCard` 5 +
+`demoWhack` 4 + `networkStats` 3 + `demoRhythm` 3 + `demoCandle` 3。
 摄像头模式的预览压成 320px 小窗、游戏画布 `max-h-[38vh]`，一屏能看到挡板；准备状态有「开始游戏」覆盖层（点头/眨眼/点按钮都能开局）。
 输入侧是 `GestureEngine` + `landmarksToFrame` + `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
@@ -191,7 +201,7 @@ Day 6 加了：`rhythmGame/demoRhythm/bestScores/shareCard` 纯模块、`useRhyt
   **wasm 目录结尾不能带 `/`**：MediaPipe 内部按 `${目录}/${文件名}` 拼接，带斜杠就变成 `/wasm//vision_wasm_internal.js`。
   dev 服务器和 `vite preview` 都会把 `//` 归一化成 `/`，所以这个坑只在静态托管上暴露——线上表现为模型加载失败、摄像头不启动，
   控制台每进一次 game 页多一条 404（2026-11-22 发布后实测踩过）。
-- 构建后 `dist/` 约 23 MB，其中 22 MB 是 wasm 和模型；发布体积以此为准。
+- 构建后 `dist/` 约 23 MB：wasm 19 MB + 模型 3.6 MB + 代码资源 452 KB（JS 430.06 kB / CSS 32.42 kB）；发布体积以此为准。
 
 ## 调试面板
 
@@ -212,7 +222,7 @@ Day 6 加了：`rhythmGame/demoRhythm/bestScores/shareCard` 纯模块、`useRhyt
 1. 真人面前验一次自然眨眼能不能撑满 `blinkHoldMs: 180`（真人眨眼只有 100–150ms，很可能要放宽；放宽走构造参数 override，不动 `DEFAULT_CONFIG`）。转头和点头的量级不用肉眼量了 —— 校准摘要直接把 `yawRange / pitchRange` 写在屏幕上；面板的峰值保持和 CSV 导出留着做逐帧核对。
 2. 真人玩一局「接星星」核对挡板手感（校准后 cursorX 是否顺、张嘴暂停/恢复是否自然）；真人打一局「节奏点头」核对判定宽容度（±120/±250ms 对点头动作是否够用）。
 3. 摄像头模式下两游戏的完整链路（校准 → 选游戏 → 接星星/节奏点头 → 结果卡）要真人各走一遍 —— 无头浏览器验不了摄像头，Day 6 的浏览器验收覆盖的是演示模式全流程。
-4. Day 7 计划：首页视觉重设计与字体。
+4. 遗留清单（Day 7 冲刺后不再继续改，详见 [docs/qoder-log.md](../docs/qoder-log.md) 第 10 轮）：真人样本 1 人、打地鼠/吹蜡烛真人未验、Safari 只验私密模式兜底、眨眼阈值为单人经验值、首页视觉重设计与字体未做。
 5. 论坛帖「我改了什么」从 [docs/qoder-log.md](../docs/qoder-log.md) 取素材（各天都有记录，含提交号）。
 
 ## 源码仓库
