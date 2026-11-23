@@ -1,14 +1,17 @@
 import { useState } from 'react';
+import { Trophy } from 'lucide-react';
 import { bestOf, readBestScores, updateBest, writeBestScores } from '../game/bestScores';
 import type { RhythmGameStats } from '../game/rhythmGame';
 import { downloadShareCard } from '../game/shareCard';
+import type { SnakeGameStats } from '../game/snakeGame';
 import type { StarGameStats } from '../game/starGame';
 import Button from './Button';
 
-/** 两个游戏共用的结果数据：按 game 判别 stats 的字段。 */
+/** 三个游戏共用的结果数据：按 game 判别 stats 的字段。 */
 export type GameResult =
   | { game: 'star'; stats: StarGameStats }
-  | { game: 'rhythm'; stats: RhythmGameStats };
+  | { game: 'rhythm'; stats: RhythmGameStats }
+  | { game: 'snake'; stats: SnakeGameStats };
 
 interface ResultCardProps {
   result: GameResult;
@@ -47,11 +50,11 @@ export default function ResultCard({
   const accuracy = game === 'rhythm' ? Math.round(stats.accuracy * 100) : null;
 
   return (
-    <div className="fixed inset-0 z-40 overflow-y-auto bg-page">
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-page/70 backdrop-blur-sm">
       <div className="flex min-h-full items-center justify-center p-5">
     <section
       aria-label="本局结束"
-      className="flex w-full max-w-md flex-col items-center gap-3 rounded-card border-2 border-edge bg-card p-6"
+      className="card-surface flex w-full max-w-md flex-col items-center gap-3 rounded-card border border-edge p-6 shadow-card animate-fade-in-up"
     >
       {rating ? (
         <p className="text-6xl font-black leading-none text-accent" aria-label={`评级 ${rating}`}>
@@ -68,12 +71,18 @@ export default function ResultCard({
           <p>
             接住 {stats.caught} / 共 {stats.total} · 漏掉 {stats.missed}
           </p>
-        ) : (
+        ) : game === 'rhythm' ? (
           <p>
             准确率 {accuracy}% · 完美连击 {stats.maxCombo}
           </p>
+        ) : (
+          <p>
+            吃到 {stats.eaten} 颗（金 {stats.golds}）· 最长 {stats.maxLength} 节 · 最高连击{' '}
+            {stats.maxCombo}
+          </p>
         )}
-        <p className="font-bold text-fg">
+        <p className="flex items-center gap-1.5 font-bold text-fg">
+          {isNew ? <Trophy size={20} aria-hidden="true" className="text-accent" /> : null}
           {isNew ? '新纪录！' : '最佳'} {best}
         </p>
       </div>

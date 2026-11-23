@@ -21,6 +21,9 @@ export interface GameSounds {
   beatSound(): void;
   judgeSound(result: JudgeResult): void;
   ratingSound(rating: Rating): void;
+  eatSound(gold: boolean, multiplier: number): void;
+  selfHitSound(): void;
+  boostSound(): void;
   setTracking(cursorX: number, active: boolean): void;
   setMuted(muted: boolean): void;
   dispose(): void;
@@ -142,6 +145,26 @@ export function createGameSounds(): GameSounds {
             ? [523, 659, 784]
             : [392, 330];
       steps.forEach((freq, i) => tone(freq, 0.16, 0.16, { when: i * 0.11 }));
+    },
+    eatSound(gold: boolean, multiplier: number): void {
+      // 连击越高音越高；金球是三连上行火花
+      const k = 1 + 0.04 * multiplier;
+      if (gold) {
+        tone(784 * k, 0.09, 0.16, { type: 'triangle' });
+        tone(988 * k, 0.09, 0.14, { type: 'triangle', when: 0.06 });
+        tone(1319 * k, 0.12, 0.12, { type: 'triangle', when: 0.12 });
+      } else {
+        tone(660 * k, 0.08, 0.14, { type: 'triangle' });
+        tone(880 * k, 0.09, 0.12, { type: 'triangle', when: 0.05 });
+      }
+    },
+    selfHitSound(): void {
+      tone(220, 0.2, 0.14, { slideTo: 110, type: 'sawtooth' });
+    },
+    boostSound(): void {
+      tone(659, 0.1, 0.16, { type: 'triangle' });
+      tone(988, 0.1, 0.16, { type: 'triangle', when: 0.08 });
+      tone(1319, 0.16, 0.16, { type: 'triangle', when: 0.16 });
     },
     setTracking(cursorX: number, active: boolean): void {
       const magnitude = Math.min(1, Math.abs(cursorX));

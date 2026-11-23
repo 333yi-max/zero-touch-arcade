@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { VideoOff } from 'lucide-react';
 import { FACE_POINTS } from '../input/faceFrame';
 import type { CameraSource } from '../input/cameraSource';
 import type { RawFrame } from '../input/types';
@@ -91,7 +92,7 @@ export default function CameraStage({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card border-2 border-edge bg-page">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-card border-2 border-edge bg-page shadow-card ring-1 ring-white/5">
         <video
           ref={videoRef}
           muted
@@ -177,7 +178,10 @@ export function CameraProblemCard({ message, onDemo }: CameraProblemCardProps) {
       aria-label="摄像头没打开"
       className="flex flex-col gap-4 rounded-card border-2 border-edge bg-card p-5"
     >
-      <h2 className="text-2xl font-bold">摄像头没打开</h2>
+      <h2 className="flex items-center gap-2 text-2xl font-bold">
+        <VideoOff size={26} aria-hidden="true" className="text-ring" />
+        摄像头没打开
+      </h2>
       <p className="text-lg text-dim">{message}</p>
 
       <div className="flex flex-col gap-2">

@@ -3,7 +3,7 @@ export type Screen = 'start' | 'calibration' | 'select' | 'game';
 /** 输入来源：真实摄像头，或浏览器内的虚拟玩家。 */
 export type Mode = 'camera' | 'demo';
 
-export type GameId = 'star' | 'rhythm';
+export type GameId = 'star' | 'rhythm' | 'snake';
 
 export type AppEvent =
   | { type: 'choose_camera' }

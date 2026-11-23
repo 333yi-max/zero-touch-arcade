@@ -10,15 +10,27 @@ import {
   type StarGameState,
   type Star,
 } from '../game/starGame';
+import { paintBackdrop } from '../game/backdrop';
+import { paintFloatTexts, type FloatText } from '../game/fx';
 
-/** 声音的视觉替身：接住爆发、漏掉红光。时间戳由调用方在事件发生时打上。 */
+/** 声音的视觉替身：接住爆发、漏掉红光、震屏与飘字。时间戳由调用方在事件发生时打上。 */
 export interface GameFx {
   catchUntil: number;
   catchAt: { x: number; y: number } | null;
   missUntil: number;
+  shakeUntil: number;
+  shakePower: number;
+  texts: FloatText[];
 }
 
-const EMPTY_FX: GameFx = { catchUntil: 0, catchAt: null, missUntil: 0 };
+const EMPTY_FX: GameFx = {
+  catchUntil: 0,
+  catchAt: null,
+  missUntil: 0,
+  shakeUntil: 0,
+  shakePower: 0,
+  texts: [],
+};
 
 interface StarGameProps {
   gameRef: RefObject<StarGameState>;
@@ -82,17 +94,17 @@ export default function StarGame({ gameRef, paused, fxRef, overlay, frameClass }
   }, [gameRef, fxRef]);
 
   return (
-    <div className={`relative mx-auto aspect-[4/3] w-full ${frameClass ?? 'max-h-[60vh]'}`}>
+    <div className={`relative mx-auto aspect-[4/3] w-full shadow-card ${frameClass ?? 'max-h-[60vh]'}`}>
       <canvas
         ref={canvasRef}
         role="img"
         aria-label="接星星游戏画面：左右转头移动底部蓝色挡板，接住落下的黄色星星"
-        className="absolute inset-0 h-full w-full rounded-card border-2 border-edge bg-page"
+        className="absolute inset-0 h-full w-full rounded-card border-2 border-edge bg-page ring-1 ring-white/5"
       />
       {paused ? (
         <div
           role="status"
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-card bg-page/85"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-card bg-page/85 backdrop-blur-[2px]"
         >
           <span className="text-4xl font-black">已暂停</span>
           <span className="text-xl font-semibold text-dim">张嘴或点头继续</span>
@@ -124,20 +136,33 @@ function paintGame(
   ctx.translate(ox, oy);
   ctx.scale(scale, scale);
 
+  paintBackdrop(ctx, GAME_WIDTH, GAME_HEIGHT, reduced ? 0 : now);
+
+  // 震屏只晃世界元素，背景网格保持稳定，画面不会「整屏在抖」
+  if (!reduced && now < fx.shakeUntil) {
+    const t = (fx.shakeUntil - now) / 300;
+    ctx.translate(
+      Math.sin(now * 0.11) * 10 * fx.shakePower * t,
+      Math.cos(now * 0.09) * 8 * fx.shakePower * t,
+    );
+  }
+
   ctx.strokeStyle = '#2a3550';
   ctx.lineWidth = 2;
   ctx.setLineDash([12, 12]);
   ctx.strokeRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
   ctx.setLineDash([]);
 
-  for (const star of s.stars) paintStar(ctx, star);
+  for (const star of s.stars) paintStar(ctx, star, reduced ? 0 : now);
 
   if (!reduced && now < fx.missUntil) paintMissFlash(ctx, 1 - (fx.missUntil - now) / 350);
   paintPaddle(ctx, s.paddleX, s.combo, reduced, !reduced && now < fx.missUntil ? shakeOf(now) : 0);
   if (!reduced && now < fx.catchUntil && fx.catchAt) {
     paintCatchBurst(ctx, fx.catchAt.x, fx.catchAt.y, 1 - (fx.catchUntil - now) / 300);
+    paintPaddleFlash(ctx, s.paddleX, (fx.catchUntil - now) / 300);
   }
-  paintPhaseText(ctx, s);
+  paintFloatTexts(ctx, fx.texts, now);
+  paintPhaseText(ctx, s, reduced ? 0 : now);
 
   ctx.restore();
 }
@@ -160,8 +185,25 @@ function starPath(ctx: CanvasRenderingContext2D, x: number, y: number, outer: nu
   ctx.closePath();
 }
 
-function paintStar(ctx: CanvasRenderingContext2D, star: Star): void {
+function paintStar(ctx: CanvasRenderingContext2D, star: Star, now: number): void {
   ctx.save();
+
+  // 竖直光丝拖尾：加法混合，金星的更长更亮
+  if (now > 0) {
+    const tailLen = Math.min(90, star.vy * 0.45);
+    ctx.globalCompositeOperation = 'lighter';
+    const tail = ctx.createLinearGradient(star.x, star.y - tailLen, star.x, star.y);
+    tail.addColorStop(0, 'rgba(255,214,10,0)');
+    tail.addColorStop(1, star.gold ? 'rgba(255,229,102,0.5)' : 'rgba(255,214,10,0.32)');
+    ctx.strokeStyle = tail;
+    ctx.lineWidth = star.gold ? 5 : 3;
+    ctx.beginPath();
+    ctx.moveTo(star.x, star.y - tailLen);
+    ctx.lineTo(star.x, star.y - 4);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   if (star.gold) {
     ctx.shadowColor = '#ffd60a';
     ctx.shadowBlur = 20;
@@ -174,6 +216,22 @@ function paintStar(ctx: CanvasRenderingContext2D, star: Star): void {
     starPath(ctx, star.x, star.y, STAR_RADIUS);
   }
   ctx.fill();
+
+  // 金星的四芒闪烁：随 now 旋转，reduced 时传 0 不画
+  if (star.gold && now > 0) {
+    ctx.translate(star.x, star.y);
+    ctx.rotate(now / 400);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,244,180,0.8)';
+    ctx.lineWidth = 2;
+    const spike = STAR_RADIUS + 12 + Math.sin(now / 200) * 3;
+    ctx.beginPath();
+    ctx.moveTo(-spike, 0);
+    ctx.lineTo(spike, 0);
+    ctx.moveTo(0, -spike);
+    ctx.lineTo(0, spike);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -200,6 +258,24 @@ function paintPaddle(
   ctx.restore();
 }
 
+/** 接住瞬间挡板过曝一闪：加法混合的白色高光。 */
+function paintPaddleFlash(ctx: CanvasRenderingContext2D, paddleX: number, t: number): void {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(1, t * 2) * 0.55;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.roundRect(
+    paddleX - PADDLE_WIDTH / 2,
+    PADDLE_Y,
+    PADDLE_WIDTH,
+    PADDLE_HEIGHT,
+    PADDLE_HEIGHT / 2,
+  );
+  ctx.fill();
+  ctx.restore();
+}
+
 /** 漏掉的红光：底部一条由深到浅的红带。 */
 function paintMissFlash(ctx: CanvasRenderingContext2D, t: number): void {
   const band = ctx.createLinearGradient(0, GAME_HEIGHT - 90, 0, GAME_HEIGHT);
@@ -215,6 +291,7 @@ function paintMissFlash(ctx: CanvasRenderingContext2D, t: number): void {
  */
 function paintCatchBurst(ctx: CanvasRenderingContext2D, x: number, y: number, t: number): void {
   ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 1 - t;
   ctx.strokeStyle = '#ffe566';
   ctx.lineWidth = 3;
@@ -233,15 +310,22 @@ function paintCatchBurst(ctx: CanvasRenderingContext2D, x: number, y: number, t:
   ctx.restore();
 }
 
-function paintPhaseText(ctx: CanvasRenderingContext2D, s: StarGameState): void {
+function paintPhaseText(ctx: CanvasRenderingContext2D, s: StarGameState, now: number): void {
   ctx.textAlign = 'center';
   if (s.phase === 'ready') {
     ctx.fillStyle = '#c3cde4';
     ctx.font = 'bold 28px system-ui, sans-serif';
     ctx.fillText('点头或眨眼开始', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
   } else if (s.phase === 'countdown') {
+    const pulse = now > 0 ? 1 + 0.06 * Math.sin(now / 150) : 1;
+    ctx.save();
+    ctx.translate(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    ctx.scale(pulse, pulse);
+    ctx.shadowColor = '#ffd60a';
+    ctx.shadowBlur = 24;
     ctx.fillStyle = '#ffd60a';
     ctx.font = '900 96px system-ui, sans-serif';
-    ctx.fillText(String(Math.ceil(s.countdownMs / 1000)), GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    ctx.fillText(String(Math.ceil(s.countdownMs / 1000)), 0, 0);
+    ctx.restore();
   }
 }

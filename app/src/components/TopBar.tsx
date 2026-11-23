@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 interface TopBarProps {
   title: string;
@@ -13,9 +14,12 @@ export default function TopBar({ title, onBack, right }: TopBarProps) {
         <button
           type="button"
           onClick={onBack}
-          className="min-h-16 shrink-0 rounded-card border-2 border-edge bg-card px-5 text-lg font-bold text-fg hover:border-accent"
+          className="min-h-16 shrink-0 rounded-card border-2 border-edge bg-card px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
         >
-          ← 返回
+          <span className="inline-flex items-center gap-2">
+            <ArrowLeft size={22} aria-hidden="true" />
+            返回
+          </span>
         </button>
       ) : null}
       <h1 className="flex-1 text-2xl font-bold sm:text-3xl">{title}</h1>

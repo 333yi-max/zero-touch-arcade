@@ -6,11 +6,14 @@ import { useRhythmGame } from '../hooks/useRhythmGame';
 import type { RhythmGameHud } from '../hooks/useRhythmGame';
 import { useStarGame } from '../hooks/useStarGame';
 import type { StarGameHud } from '../hooks/useStarGame';
+import { useSnakeGame } from '../hooks/useSnakeGame';
+import type { SnakeGameHud } from '../hooks/useSnakeGame';
 import { CameraSource } from '../input/cameraSource';
 import type { Calibration, GestureEvent, InputState, RawFrame } from '../input/types';
 import { ScriptedSource } from '../input/scriptedSource';
 import { demoAimCursor } from '../game/demoAim';
 import { demoRhythmInput } from '../game/demoRhythm';
+import { demoSnakeTurn } from '../game/demoSnake';
 import { createGameSpeaker } from '../game/gameSpeech';
 import type { GameSpeaker } from '../game/gameSpeech';
 import { readMuted, writeMuted } from '../game/playerPrefs';
@@ -26,8 +29,12 @@ import RhythmGame from './RhythmGame';
 import type { RhythmFx } from './RhythmGame';
 import StarGame from './StarGame';
 import type { GameFx } from './StarGame';
+import SnakeGame from './SnakeGame';
+import type { SnakeFx } from './SnakeGame';
 import { START_LIVES } from '../game/starGame';
+import { BOOST_MS } from '../game/snakeGame';
 import TopBar from './TopBar';
+import { Info, PlayCircle, Sparkles, Video, Volume2, VolumeX } from 'lucide-react';
 
 interface GameScreenProps {
   gameId: GameId;
@@ -117,17 +124,23 @@ export default function GameScreen({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <TopBar
-        title={gameId === 'star' ? '接星星' : '节奏点头'}
+        title={gameId === 'star' ? '接星星' : gameId === 'rhythm' ? '节奏点头' : '霓虹贪吃蛇'}
         onBack={onBack}
         right={
-          <span className="rounded-full border-2 border-edge bg-card px-4 py-2 text-base font-bold text-dim">
+          <span className="card-surface inline-flex items-center gap-2 rounded-full border-2 border-edge px-4 py-2 text-base font-bold text-dim">
+            {mode === 'demo' ? (
+              <PlayCircle size={18} aria-hidden="true" />
+            ) : (
+              <Video size={18} aria-hidden="true" />
+            )}
             {mode === 'demo' ? '演示模式' : '摄像头'}
           </span>
         }
       />
 
       {mode === 'demo' ? (
-        <p className="rounded-card bg-card px-5 py-3 text-lg text-dim">
+        <p className="card-surface flex items-center gap-2 rounded-card px-5 py-3 text-lg text-dim">
+          <Info size={20} aria-hidden="true" className="shrink-0 text-ring" />
           虚拟玩家演示，开启摄像头即可亲自体验。
         </p>
       ) : null}
@@ -144,8 +157,18 @@ export default function GameScreen({
           onBack={onBack}
           onSwitchGame={onSwitchGame}
         />
-      ) : (
+      ) : gameId === 'rhythm' ? (
         <RhythmSession
+          mode={mode}
+          gestureState={state}
+          gestureEvents={events}
+          frame={frame}
+          camera={camera}
+          onBack={onBack}
+          onSwitchGame={onSwitchGame}
+        />
+      ) : (
+        <SnakeSession
           mode={mode}
           gestureState={state}
           gestureEvents={events}
@@ -180,7 +203,7 @@ export default function GameScreen({
   );
 }
 
-// ———— 两个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
+// ———— 三个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
 
 interface SessionProps {
   mode: Mode;
@@ -225,7 +248,14 @@ function StarSession({
 
   const soundsRef = useRef<GameSounds | null>(null);
   const speakerRef = useRef<GameSpeaker | null>(null);
-  const fxRef = useRef<GameFx>({ catchUntil: 0, catchAt: null, missUntil: 0 });
+  const fxRef = useRef<GameFx>({
+    catchUntil: 0,
+    catchAt: null,
+    missUntil: 0,
+    shakeUntil: 0,
+    shakePower: 0,
+    texts: [],
+  });
   const prevPhaseRef = useRef<StarGameHud['phase']>('ready');
   const [muted, setMuted] = useState<boolean>(() => readMuted());
 
@@ -260,10 +290,26 @@ function StarSession({
           sounds?.catchSound(e.multiplier);
           fx.catchUntil = now + 300;
           fx.catchAt = { x: e.x, y: e.y };
+          fx.texts = [
+            ...fx.texts.slice(-5),
+            {
+              x: e.x,
+              y: e.y - 24,
+              text: e.multiplier > 1 ? `+${e.base * e.multiplier} ×${e.multiplier}` : `+${e.base}`,
+              color: e.gold ? '#ffe566' : '#ffd60a',
+              until: now + 900,
+            },
+          ];
+          if (e.gold) {
+            fx.shakeUntil = now + 220;
+            fx.shakePower = 0.35;
+          }
           break;
         case 'miss':
           sounds?.missSound();
           fx.missUntil = now + 350;
+          fx.shakeUntil = now + 320;
+          fx.shakePower = 0.85;
           break;
         case 'countdown':
           if (e.remaining === 3) sounds?.startSound();
@@ -374,7 +420,14 @@ function RhythmSession({
 
   const soundsRef = useRef<GameSounds | null>(null);
   const speakerRef = useRef<GameSpeaker | null>(null);
-  const fxRef = useRef<RhythmFx>({ judgeUntil: 0, judge: null, beatUntil: 0 });
+  const fxRef = useRef<RhythmFx>({
+    judgeUntil: 0,
+    judge: null,
+    beatUntil: 0,
+    shakeUntil: 0,
+    shakePower: 0,
+    texts: [],
+  });
   const prevPhaseRef = useRef<RhythmGameHud['phase']>('ready');
   const [muted, setMuted] = useState<boolean>(() => readMuted());
   const [lastJudge, setLastJudge] = useState<JudgeResult | null>(null);
@@ -412,6 +465,21 @@ function RhythmSession({
           fx.judgeUntil = now + 500;
           fx.judge = { result: e.result, beat: e.beat };
           setLastJudge(e.result);
+          if (e.result === 'miss') {
+            fx.shakeUntil = now + 300;
+            fx.shakePower = 0.7;
+          } else {
+            fx.texts = [
+              ...fx.texts.slice(-5),
+              {
+                x: 400,
+                y: 300 - 70 - 60,
+                text: e.result === 'perfect' ? `+100 连击 ${e.combo}` : '+60',
+                color: e.result === 'perfect' ? '#ffd60a' : '#58c4ff',
+                until: now + 800,
+              },
+            ];
+          }
           break;
         case 'countdown':
           if (e.remaining === 3) sounds?.startSound();
@@ -490,6 +558,183 @@ function RhythmSession({
   );
 }
 
+function SnakeSession({
+  mode,
+  gestureState,
+  gestureEvents,
+  frame,
+  camera,
+  onBack,
+  onSwitchGame,
+}: SessionProps) {
+  // 演示模式的虚拟转向：朝最近的光球慢慢转；摄像头模式完全不经过这条路
+  const { gameRef, latchRef, hud, events: gameEvents, replay } = useSnakeGame({
+    inputTransform: mode === 'demo' ? demoSnakeTurn : undefined,
+    // 演示模式的虚拟玩家每 3 秒点一次头（= 闪耀时刻），结束后别让它自动再玩
+    replayOnConfirm: mode === 'camera',
+  });
+
+  const soundsRef = useRef<GameSounds | null>(null);
+  const speakerRef = useRef<GameSpeaker | null>(null);
+  const fxRef = useRef<SnakeFx>({
+    eatUntil: 0,
+    eatAt: null,
+    eatGold: false,
+    boostUntil: 0,
+    hitUntil: 0,
+    shakeUntil: 0,
+    shakePower: 0,
+    texts: [],
+  });
+  const prevPhaseRef = useRef<SnakeGameHud['phase']>('ready');
+  const [muted, setMuted] = useState<boolean>(() => readMuted());
+
+  useEffect(() => {
+    const sounds = createGameSounds();
+    const speaker = createGameSpeaker();
+    sounds.setMuted(readMuted());
+    soundsRef.current = sounds;
+    speakerRef.current = speaker;
+    return () => {
+      soundsRef.current = null;
+      speakerRef.current = null;
+      sounds.dispose();
+    };
+  }, []);
+
+  // 手势脉冲锁存：点头/张嘴只持续一帧，渲染间隔之间出现也不丢
+  const latch = latchRef.current;
+  latch.cursorX = gestureState.cursorX;
+  if (gestureState.confirm || gestureEvents.includes('confirm')) latch.confirm = true;
+  if (gestureState.pause || gestureEvents.includes('pause')) latch.pause = true;
+
+  // 事件 → 声音 + 视觉特效：每个音效都有画面替身，听障用户不靠声音
+  useEffect(() => {
+    if (gameEvents.length === 0) return;
+    const sounds = soundsRef.current;
+    const fx = fxRef.current;
+    const now = performance.now();
+    for (const e of gameEvents) {
+      switch (e.type) {
+        case 'eat':
+          sounds?.eatSound(e.gold, e.multiplier);
+          fx.eatUntil = now + 300;
+          fx.eatAt = { x: e.x, y: e.y };
+          fx.eatGold = e.gold;
+          fx.texts = [
+            ...fx.texts.slice(-5),
+            {
+              x: e.x,
+              y: e.y - 24,
+              text: e.multiplier > 1 ? `+${e.points} ×${e.multiplier}` : `+${e.points}`,
+              color: e.gold ? '#ffe566' : '#ffd60a',
+              until: now + 900,
+            },
+          ];
+          if (e.gold) {
+            fx.shakeUntil = now + 220;
+            fx.shakePower = 0.35;
+          }
+          break;
+        case 'selfHit':
+          sounds?.selfHitSound();
+          fx.hitUntil = now + 350;
+          fx.shakeUntil = now + 320;
+          fx.shakePower = 0.9;
+          break;
+        case 'boostStart':
+          sounds?.boostSound();
+          fx.boostUntil = now + BOOST_MS;
+          break;
+        case 'countdown':
+          if (e.remaining === 3) sounds?.startSound();
+          break;
+        case 'gameOver':
+          sounds?.endSound();
+          break;
+      }
+    }
+  }, [gameEvents]);
+
+  // 语音只报相位切换，不逐帧叫
+  useEffect(() => {
+    const speaker = speakerRef.current;
+    if (!speaker) return;
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = hud.phase;
+    if (hud.phase === prev) return;
+    if (hud.phase === 'countdown') speaker.snakeCountdown();
+    else if (hud.phase === 'paused') speaker.paused();
+    else if (hud.phase === 'playing' && prev === 'paused') speaker.resumed();
+    else if (hud.phase === 'over') speaker.snakeGameOver(hud.score);
+  }, [hud.phase, hud.score]);
+
+  // 游戏中 confirm 就是闪耀时刻，音效由 boostStart 事件给；只在开始前/结束后给反馈
+  useEffect(() => {
+    if (gestureEvents.includes('confirm') && (hud.phase === 'ready' || hud.phase === 'over')) {
+      soundsRef.current?.confirmSound(frame);
+    }
+  }, [gestureEvents, frame, hud.phase]);
+
+  // 光标跟随音：转向越狠音量越高；暂停/结束/摄像头不可用时静音
+  const trackingActive = hud.phase !== 'paused' && hud.phase !== 'over';
+  useEffect(() => {
+    soundsRef.current?.setTracking(gestureState.cursorX, trackingActive);
+  }, [gestureState.cursorX, trackingActive]);
+
+  const toggleMuted = (): void => {
+    const next = !muted;
+    setMuted(next);
+    writeMuted(next);
+    soundsRef.current?.setMuted(next);
+  };
+
+  const gamePaused = hud.phase === 'paused';
+
+  const overlayNode =
+    hud.phase === 'over' ? (
+      <ResultCard
+        result={{ game: 'snake', stats: hud.stats }}
+        onReplay={replay}
+        onSwitchGame={onSwitchGame}
+        onHome={onBack}
+      />
+    ) : hud.phase === 'ready' ? (
+      <ReadyCard onStart={() => (latch.confirm = true)} />
+    ) : null;
+
+  return (
+    <>
+      <SnakeHudBar
+        hud={hud}
+        muted={muted}
+        onMuteToggle={toggleMuted}
+        onPauseToggle={() => (latchRef.current.pause = true)}
+      />
+      {mode === 'camera' ? (
+        <div className="mx-auto w-full max-w-xs">
+          <CameraStage
+            videoRef={camera.videoRef}
+            source={camera.source}
+            mirrored={camera.mirrored}
+            overlay={camera.overlay}
+            paused={gamePaused}
+            frame={frame}
+            onDemo={camera.onDemo}
+          />
+        </div>
+      ) : null}
+      <SnakeGame
+        gameRef={gameRef}
+        paused={gamePaused}
+        fxRef={fxRef}
+        overlay={overlayNode}
+        frameClass={mode === 'camera' ? 'max-h-[36vh]' : undefined}
+      />
+    </>
+  );
+}
+
 // ———— HUD 与覆盖层 ————
 
 interface MutedControls {
@@ -503,9 +748,16 @@ function MuteButton({ muted, onMuteToggle }: MutedControls) {
       type="button"
       onClick={onMuteToggle}
       aria-pressed={muted}
-      className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg hover:border-accent"
+      className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
     >
-      音效：{muted ? '关' : '开'}
+      <span className="inline-flex items-center gap-2">
+        {muted ? (
+          <VolumeX size={20} aria-hidden="true" />
+        ) : (
+          <Volume2 size={20} aria-hidden="true" />
+        )}
+        音效：{muted ? '关' : '开'}
+      </span>
     </button>
   );
 }
@@ -517,7 +769,7 @@ interface StarHudBarProps extends MutedControls {
 
 function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge bg-card px-5 py-3">
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card">
       <p className="text-2xl font-black tabular-nums">
         <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
           得分 {hud.score}
@@ -552,7 +804,7 @@ function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps
           type="button"
           onClick={onPauseToggle}
           aria-label={hud.phase === 'paused' ? '继续游戏' : '暂停游戏'}
-          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg hover:border-accent"
+          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
         >
           {hud.phase === 'paused' ? '继续' : '暂停'}
         </button>
@@ -578,7 +830,7 @@ interface RhythmHudBarProps extends MutedControls {
 
 function RhythmHudBar({ hud, muted, onMuteToggle, lastJudge }: RhythmHudBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge bg-card px-5 py-3">
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card">
       <p className="text-2xl font-black tabular-nums">
         <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
           得分 {hud.score}
@@ -617,10 +869,73 @@ function RhythmHudBar({ hud, muted, onMuteToggle, lastJudge }: RhythmHudBarProps
   );
 }
 
+function mmss(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  return `${m}:${String(totalSec % 60).padStart(2, '0')}`;
+}
+
+interface SnakeHudBarProps extends MutedControls {
+  hud: SnakeGameHud;
+  onPauseToggle: () => void;
+}
+
+function SnakeHudBar({ hud, muted, onMuteToggle, onPauseToggle }: SnakeHudBarProps) {
+  return (
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card">
+      <p className="text-2xl font-black tabular-nums">
+        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
+          得分 {hud.score}
+        </span>
+      </p>
+
+      <p className="text-lg font-bold tabular-nums text-dim">时间 {mmss(hud.timeLeft)}</p>
+
+      <p className="text-lg font-bold text-dim">长度 {hud.length}</p>
+
+      {hud.multiplier > 1 ? (
+        <p
+          aria-live="polite"
+          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
+        >
+          ×{hud.multiplier} · 连击 {hud.combo}
+        </p>
+      ) : null}
+
+      {hud.boostActive ? (
+        <p
+          aria-live="polite"
+          className="rounded-full bg-accent-hi px-3 py-1 text-base font-black text-accent-fg"
+        >
+          闪耀 ×2
+        </p>
+      ) : null}
+
+      <div className="ml-auto flex gap-3">
+        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
+        <button
+          type="button"
+          onClick={onPauseToggle}
+          aria-label={hud.phase === 'paused' ? '继续游戏' : '暂停游戏'}
+          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
+        >
+          {hud.phase === 'paused' ? '继续' : '暂停'}
+        </button>
+      </div>
+
+      <span className="sr-only" aria-live="polite">
+        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
+      </span>
+    </div>
+  );
+}
+
 function ReadyCard({ onStart }: { onStart: () => void }) {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-card bg-page/85 p-6 text-center">
-      <p className="text-3xl font-black">准备好了吗？</p>
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-card bg-page/85 p-6 text-center backdrop-blur-sm">
+      <p className="flex items-center gap-2 text-3xl font-black">
+        <Sparkles size={28} aria-hidden="true" className="text-accent" />
+        准备好了吗？
+      </p>
       <p className="text-lg text-dim">点点头、眨眨眼，或点下面的按钮开始</p>
       <Button onClick={onStart} hint="点头、眨眼、张嘴都不方便时，可以点这里">
         开始游戏

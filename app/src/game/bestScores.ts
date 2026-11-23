@@ -10,9 +10,10 @@ export const BEST_KEY = 'zt.best.v1';
 export interface BestScores {
   star: number | null;
   rhythm: number | null;
+  snake: number | null;
 }
 
-export const EMPTY_BEST: BestScores = { star: null, rhythm: null };
+export const EMPTY_BEST: BestScores = { star: null, rhythm: null, snake: null };
 
 function readScore(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -29,6 +30,7 @@ export function parseBestScores(raw: string | null): BestScores {
     return {
       star: readScore(rec.star),
       rhythm: readScore(rec.rhythm),
+      snake: readScore(rec.snake),
     };
   } catch {
     return EMPTY_BEST;

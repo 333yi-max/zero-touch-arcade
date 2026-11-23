@@ -11,6 +11,7 @@
 - Tailwind CSS 4（通过 `@tailwindcss/vite` 插件，无独立配置文件，主题变量写在 `src/index.css` 的 `@theme` 里）
 - Canvas 2D（不用 Three.js）
 - 人脸关键点用 `@mediapipe/tasks-vision` 的 FaceLandmarker（精确锁 `0.10.14`）；wasm 与模型都放 `public/`，不走 CDN
+- 图标用 `lucide-react`（精确锁 `1.78.0`，按需引入，JS 约 +16 kB / gzip +5.5 kB）。这是项目**唯一**的额外运行时依赖，2026-11-24 经所有者拍板保留，用于首页/结果卡的图标质感；其余逻辑仍然零依赖、纯函数可测
 
 依赖版本全部写精确值，不用 `^` `~`，`package-lock.json` 需一并提交。
 

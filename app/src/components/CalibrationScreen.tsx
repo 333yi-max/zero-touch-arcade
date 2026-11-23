@@ -141,7 +141,7 @@ export default function CalibrationScreen({
       )}
 
       {givingUp ? (
-        <div className="flex flex-col gap-3 rounded-card border-2 border-edge bg-card p-5">
+        <div className="card-surface flex flex-col gap-3 rounded-card border border-edge p-5 shadow-card">
           <h3 className="text-xl font-bold">{STEP_COPY.giveUp.title}</h3>
           <p className="text-lg text-dim">{STEP_COPY.giveUp.detail}</p>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -175,7 +175,7 @@ function Summary({ result }: { result: CalibrationResult }) {
   return (
     <section
       aria-label="校准结果"
-      className="flex flex-col gap-3 rounded-card border-2 border-edge bg-card p-5"
+      className="card-surface flex flex-col gap-3 rounded-card border border-edge p-5 shadow-card"
     >
       <h2 className="text-2xl font-bold">这次用到的量程</h2>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-lg sm:grid-cols-3">

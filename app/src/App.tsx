@@ -41,9 +41,16 @@ export default function App() {
     send({ type: 'calibration_finished' });
   };
 
+  // 首页/选游戏/游戏页在桌面上放宽，校准页保持窄栏（文字要一行读得完）
+  const wide = state.screen === 'start' || state.screen === 'select' || state.screen === 'game';
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-8 sm:py-12">
+      <main
+        className={`mx-auto flex w-full flex-1 flex-col px-5 py-8 sm:px-8 sm:py-12 ${
+          wide ? 'max-w-6xl' : 'max-w-3xl'
+        }`}
+      >
         {state.screen === 'start' ? (
           <StartScreen
             hasCalibration={state.calibrated}
@@ -86,7 +93,7 @@ export default function App() {
         ) : null}
       </main>
 
-      <footer className="mx-auto w-full max-w-3xl px-5 pb-8 text-base text-dim">
+      <footer className="mx-auto w-full max-w-6xl px-5 pb-8 text-base text-dim sm:px-8">
         零触控游乐场 · 纯前端，无账号、无后端、不上传任何画面
       </footer>
     </div>

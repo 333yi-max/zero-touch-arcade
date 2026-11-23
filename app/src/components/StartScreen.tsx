@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Hand, Lock, Monitor, ShieldCheck, Timer, Zap, type LucideIcon } from 'lucide-react';
 import Button from './Button';
 
 interface StartScreenProps {
@@ -9,6 +10,30 @@ interface StartScreenProps {
   onStartDemo: () => void;
 }
 
+const FEATURES: readonly [string, string, string, string][] = [
+  ['01', '不用手', '转头移动、点头确认，眨眼和张嘴当辅助键。', 'zap'],
+  ['02', '画面不上传', '人脸在你的浏览器里识别，请求不出本机。', 'shield-check'],
+  ['03', '三分钟一局', '30 秒校准，三个小游戏，随时能停。', 'timer'],
+];
+
+const FEATURE_ICONS: Record<string, LucideIcon> = {
+  zap: Zap,
+  'shield-check': ShieldCheck,
+  timer: Timer,
+};
+
+const NOTICE_ITEMS: { icon: LucideIcon; text: string }[] = [
+  { icon: Lock, text: '视频只在你的浏览器里处理，不会上传到任何服务器。' },
+  { icon: Monitor, text: '建议使用 Chrome 或 Edge，并在弹出提示时允许使用摄像头。' },
+  { icon: Hand, text: '没有摄像头也没关系，选「演示模式」即可看完整个玩法。' },
+];
+
+const STATS: readonly [string, string][] = [
+  ['123', '条自动化测试'],
+  ['2', '个小游戏'],
+  ['0', '次画面上传'],
+];
+
 export default function StartScreen({
   hasCalibration,
   onStartCamera,
@@ -18,19 +43,53 @@ export default function StartScreen({
   const [notice, setNotice] = useState('');
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-3">
-        <p className="text-lg font-semibold text-accent">Hack4Good · 技术向善</p>
-        <h1 className="text-5xl font-black leading-tight tracking-tight sm:text-7xl">
+    <div className="relative flex flex-col gap-10">
+      <div
+        aria-hidden="true"
+        className="bg-arcade pointer-events-none absolute -inset-x-5 -top-8 -bottom-10 -z-10"
+      />
+
+      <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
+        <div className="flex flex-col gap-10">
+      <header className="animate-fade-in-up flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-bold tracking-[0.3em] text-accent">
+            HACK4GOOD · 技术向善
+          </p>
+          <span aria-hidden="true" className="h-0.5 w-14 bg-accent/40" />
+        </div>
+        <h1 className="font-display text-5xl leading-[1.08] tracking-[0.06em] sm:text-7xl">
           零触控游乐场
         </h1>
-        <p className="text-2xl text-dim sm:text-3xl">不用手，也能玩三分钟。</p>
+        <p className="text-xs font-semibold tracking-[0.5em] text-dim">
+          ZERO TOUCH ARCADE
+        </p>
+        <p className="mt-1 text-2xl text-dim sm:text-3xl">不用手，也能玩三分钟。</p>
         <p className="max-w-prose text-lg text-dim">
           给上肢障碍者、术后康复者、行动不便的长辈：只用头、眼睛和嘴，就能玩一局游戏。
         </p>
+      </header>
+
+      <div className="animate-fade-in-up stagger-2 grid gap-3 sm:grid-cols-3">
+        {FEATURES.map(([no, title, detail, icon]) => {
+          const Icon = FEATURE_ICONS[icon] ?? Zap;
+          return (
+            <div
+              key={no}
+              className="card-surface flex flex-col gap-1.5 rounded-card border border-edge p-5 shadow-card transition duration-200 ease-out-soft hover:border-accent/50 hover:bg-card-hi"
+            >
+              <div className="flex items-center justify-between">
+                <Icon size={24} strokeWidth={1.75} aria-hidden="true" className="text-accent" />
+                <span className="text-lg font-black tracking-[0.2em] text-accent/70">{no}</span>
+              </div>
+              <span className="text-xl font-bold">{title}</span>
+              <span className="text-base leading-relaxed text-dim">{detail}</span>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="animate-fade-in-up stagger-3 flex flex-col gap-4">
         <Button
           onClick={onStartCamera}
           hint={hasCalibration ? '上次已校准 · 直接进入' : '需要摄像头 · 约 30 秒校准'}
@@ -57,16 +116,77 @@ export default function StartScreen({
       <p role="status" aria-live="polite" className="min-h-6 text-lg font-semibold text-accent">
         {notice}
       </p>
+        </div>
+
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-10">
+          <PreviewCard />
+          <div className="grid grid-cols-3 gap-3">
+            {STATS.map(([value, label]) => (
+              <div
+                key={label}
+                className="card-surface rounded-card border border-edge px-2 py-4 text-center shadow-card"
+              >
+                <p className="text-2xl font-black tabular-nums text-accent">{value}</p>
+                <p className="mt-1 text-sm leading-tight text-dim">{label}</p>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
 
       <section
         aria-label="使用前请知道"
-        className="flex flex-col gap-2 rounded-card border-2 border-edge bg-card p-5 text-lg"
+        className="card-surface flex flex-col gap-3 rounded-card border border-edge p-5 text-lg shadow-card"
       >
         <h2 className="text-xl font-bold">使用前请知道</h2>
-        <p className="text-dim">🔒 视频只在你的浏览器里处理，不会上传到任何服务器。</p>
-        <p className="text-dim">🖥️ 建议使用 Chrome 或 Edge，并在弹出提示时允许使用摄像头。</p>
-        <p className="text-dim">🖐️ 没有摄像头也没关系，选「演示模式」即可看完整个玩法。</p>
+        {NOTICE_ITEMS.map(({ icon: Icon, text }) => (
+          <p key={text} className="flex gap-2.5 text-dim">
+            <Icon size={20} aria-hidden="true" className="mt-1 shrink-0 text-ring" />
+            <span>{text}</span>
+          </p>
+        ))}
       </section>
     </div>
+  );
+}
+
+/** 首页右侧的静态玩法示意：不加载摄像头也能一眼看懂怎么玩。 */
+function PreviewCard() {
+  const stars: readonly [number, number][] = [
+    [20, 22],
+    [56, 16],
+    [76, 40],
+    [36, 54],
+    [86, 66],
+    [12, 72],
+  ];
+  return (
+    <figure className="card-surface overflow-hidden rounded-card border border-edge shadow-card">
+      <div className="flex items-center justify-between border-b border-edge/60 px-4 py-3">
+        <span className="text-xs font-bold tracking-[0.3em] text-dim">STAR CATCH / LIVE</span>
+        <span className="flex items-center gap-1.5 text-xs font-bold text-ring">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-ring" />
+          本地识别
+        </span>
+      </div>
+      <div className="relative aspect-[4/3] w-full bg-[#04060c]">
+        <div aria-hidden="true" className="bg-arcade pointer-events-none absolute inset-0 opacity-60" />
+        {stars.map(([left, top]) => (
+          <span
+            key={`${left}-${top}`}
+            aria-hidden="true"
+            className="absolute h-2.5 w-2.5 rotate-45 bg-accent shadow-[0_0_10px_rgba(255,214,10,0.8)]"
+            style={{ left: `${left}%`, top: `${top}%` }}
+          />
+        ))}
+        <div
+          aria-hidden="true"
+          className="absolute bottom-[12%] left-[62%] h-3 w-28 -translate-x-1/2 rounded-full bg-ring shadow-[0_0_24px_rgba(88,196,255,0.9)]"
+        />
+        <span className="absolute bottom-3 left-4 rounded-full bg-page/80 px-3 py-1 text-xs font-semibold text-dim">
+          转头移动挡板 · 点头确认
+        </span>
+      </div>
+    </figure>
   );
 }

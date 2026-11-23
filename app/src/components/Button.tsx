@@ -6,16 +6,21 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   /** 按钮内第二行小字，用来说明代价，例如「需要摄像头」。 */
   hint?: ReactNode;
+  /** 主行文字前的图标，一般传 lucide 组件。 */
+  icon?: ReactNode;
 }
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-accent-fg hover:brightness-110',
-  secondary: 'bg-card text-fg border-2 border-edge hover:border-accent',
+  primary:
+    'bg-linear-to-b from-accent-hi to-accent text-accent-fg shadow-glow hover:brightness-105 hover:-translate-y-0.5',
+  secondary:
+    'card-surface text-fg border-2 border-edge shadow-card hover:border-accent hover:bg-card-hi',
 };
 
 export default function Button({
   variant = 'primary',
   hint,
+  icon,
   children,
   className = '',
   type = 'button',
@@ -24,10 +29,13 @@ export default function Button({
   return (
     <button
       type={type}
-      className={`min-h-16 w-full rounded-card px-6 text-xl font-bold leading-tight inline-flex flex-col items-center justify-center gap-0.5 transition duration-150 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`min-h-16 w-full rounded-card px-6 text-xl font-bold leading-tight inline-flex flex-col items-center justify-center gap-0.5 transition duration-200 ease-out-soft active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${className}`}
       {...rest}
     >
-      <span>{children}</span>
+      <span className="inline-flex items-center gap-2">
+        {icon ? <span aria-hidden="true" className="inline-flex shrink-0">{icon}</span> : null}
+        {children}
+      </span>
       {hint ? <span className="text-sm font-medium opacity-80">{hint}</span> : null}
     </button>
   );

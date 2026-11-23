@@ -3,10 +3,13 @@
 @theme {
   --color-page: #06080f;
   --color-card: #121a2b;
+  --color-card-hi: #1a2440;
   --color-edge: #2a3550;
   --color-fg: #f8fafc;
   --color-dim: #c3cde4;
   --color-accent: #ffd60a;
+  --color-accent-hi: #ffe14d;
+  --color-accent-lo: #e6b300;
   --color-accent-fg: #0b0b0b;
   --color-ring: #58c4ff;
 
@@ -14,6 +17,79 @@
   --text-base--line-height: 1.6;
 
   --radius-card: 1.25rem;
+
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 12px 32px -16px rgb(0 0 0 / 0.8);
+  --shadow-glow: 0 8px 24px -12px rgb(255 214 10 / 0.45);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-fade-in-up: fade-in-up 0.5s var(--ease-out-soft) both;
+  --animate-glow-drift: glow-drift 14s ease-in-out infinite alternate;
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes glow-drift {
+    from {
+      transform: translate3d(-2%, -1%, 0) scale(1);
+    }
+    to {
+      transform: translate3d(2%, 1.5%, 0) scale(1.06);
+    }
+  }
+
+  /* 展示字体：系统自带的宋体族，不下载任何字体文件（首屏不为字体付体积） */
+  --font-display:
+    'Songti SC', STSong, 'Noto Serif SC', 'Source Han Serif SC', SimSun, Georgia,
+    'Times New Roman', serif;
+}
+
+@layer utilities {
+  /* 首页背景：坐标网格 + 两点暖/冷光晕，纯 CSS，零图片 */
+  .bg-arcade {
+    background-image:
+      linear-gradient(rgba(120, 160, 220, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120, 160, 220, 0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* 光晕单独放伪元素上，才能对它做缓慢漂移动画（background-image 不可动画） */
+  .bg-arcade::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(ellipse 60% 45% at 12% 0%, rgba(255, 214, 10, 0.14), transparent 62%),
+      radial-gradient(ellipse 45% 40% at 96% 8%, rgba(88, 196, 255, 0.1), transparent 60%);
+    background-size: 100% 100%;
+    animation: var(--animate-glow-drift);
+    will-change: transform;
+  }
+
+  /* 入场错峰：配合 animate-fade-in-up 使用 */
+  .stagger-1 {
+    animation-delay: 60ms;
+  }
+  .stagger-2 {
+    animation-delay: 140ms;
+  }
+  .stagger-3 {
+    animation-delay: 220ms;
+  }
+
+  /* 卡片统一质感：顶部高光渐变 */
+  .card-surface {
+    background-image: linear-gradient(180deg, var(--color-card-hi), var(--color-card) 40%);
+  }
 }
 
 @layer base {
@@ -45,6 +121,7 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }

@@ -7,6 +7,8 @@ import {
   type JudgeResult,
   type RhythmGameState,
 } from '../game/rhythmGame';
+import { paintBackdrop } from '../game/backdrop';
+import { paintFloatTexts, type FloatText } from '../game/fx';
 
 // ———— 画布几何（逻辑坐标，画布按 4:3 等比缩放）————
 
@@ -17,14 +19,24 @@ const CY = RHYTHM_HEIGHT / 2;
 const TARGET_R = 70;
 const RING_MAX = 280;
 
-/** 声音的视觉替身：判定文字、拍点脉冲。时间戳由调用方在事件发生时打上。 */
+/** 声音的视觉替身：判定文字、拍点脉冲、miss 震屏与飘分。时间戳由调用方在事件发生时打上。 */
 export interface RhythmFx {
   judgeUntil: number;
   judge: { result: JudgeResult; beat: number } | null;
   beatUntil: number;
+  shakeUntil: number;
+  shakePower: number;
+  texts: FloatText[];
 }
 
-const EMPTY_FX: RhythmFx = { judgeUntil: 0, judge: null, beatUntil: 0 };
+const EMPTY_FX: RhythmFx = {
+  judgeUntil: 0,
+  judge: null,
+  beatUntil: 0,
+  shakeUntil: 0,
+  shakePower: 0,
+  texts: [],
+};
 
 const JUDGE_LABELS: Record<JudgeResult, string> = {
   perfect: 'Perfect',
@@ -99,12 +111,12 @@ export default function RhythmGame({ gameRef, fxRef, overlay, frameClass }: Rhyt
   }, [gameRef, fxRef]);
 
   return (
-    <div className={`relative mx-auto aspect-[4/3] w-full ${frameClass ?? 'max-h-[60vh]'}`}>
+    <div className={`relative mx-auto aspect-[4/3] w-full shadow-card ${frameClass ?? 'max-h-[60vh]'}`}>
       <canvas
         ref={canvasRef}
         role="img"
         aria-label="节奏点头游戏画面：圆环缩小到中心圈重合的那一刻点头"
-        className="absolute inset-0 h-full w-full rounded-card border-2 border-edge bg-page"
+        className="absolute inset-0 h-full w-full rounded-card border-2 border-edge bg-page ring-1 ring-white/5"
       />
       {overlay ?? null}
     </div>
@@ -132,15 +144,44 @@ function paintGame(
   ctx.translate(ox, oy);
   ctx.scale(scale, scale);
 
+  paintBackdrop(ctx, RHYTHM_WIDTH, RHYTHM_HEIGHT, reduced ? 0 : now);
+
+  // miss 震屏：只晃世界元素，背景网格保持稳定
+  if (!reduced && now < fx.shakeUntil) {
+    const t = (fx.shakeUntil - now) / 300;
+    ctx.translate(
+      Math.sin(now * 0.13) * 8 * fx.shakePower * t,
+      Math.cos(now * 0.11) * 6 * fx.shakePower * t,
+    );
+  }
+
   paintTarget(ctx);
   paintRings(ctx, s, reduced);
   if (!reduced && now < fx.beatUntil) paintBeatPulse(ctx, 1 - (fx.beatUntil - now) / 300);
   if (fx.judge && now < fx.judgeUntil) {
-    paintJudgeText(ctx, fx.judge.result, reduced ? 0 : 1 - (fx.judgeUntil - now) / 500);
+    const fade = reduced ? 0 : 1 - (fx.judgeUntil - now) / 500;
+    paintJudgeText(ctx, fx.judge.result, fade);
+    if (!reduced && fx.judge.result === 'perfect') {
+      paintShockwave(ctx, 1 - (fx.judgeUntil - now) / 500);
+    }
   }
+  paintFloatTexts(ctx, fx.texts, now, 800);
   paintHudText(ctx, s);
-  paintPhaseText(ctx, s);
+  paintPhaseText(ctx, s, reduced ? 0 : now);
 
+  ctx.restore();
+}
+
+/** perfect 的冲击波：目标圈外扩一圈淡出。 */
+function paintShockwave(ctx: CanvasRenderingContext2D, t: number): void {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = 1 - t;
+  ctx.strokeStyle = '#ffe566';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(CX, CY, TARGET_R + 90 * t, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -185,6 +226,7 @@ function paintRings(ctx: CanvasRenderingContext2D, s: RhythmGameState, reduced: 
 /** 拍点的脉冲：目标圈外扩一圈淡出。 */
 function paintBeatPulse(ctx: CanvasRenderingContext2D, t: number): void {
   ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 1 - t;
   ctx.strokeStyle = '#ffe566';
   ctx.lineWidth = 3;
@@ -223,15 +265,22 @@ function paintHudText(ctx: CanvasRenderingContext2D, s: RhythmGameState): void {
   ctx.fillText(`连击 ${s.combo}`, RHYTHM_WIDTH - 28, 46);
 }
 
-function paintPhaseText(ctx: CanvasRenderingContext2D, s: RhythmGameState): void {
+function paintPhaseText(ctx: CanvasRenderingContext2D, s: RhythmGameState, now: number): void {
   ctx.textAlign = 'center';
   if (s.phase === 'ready') {
     ctx.fillStyle = '#c3cde4';
     ctx.font = 'bold 28px system-ui, sans-serif';
     ctx.fillText('点头或眨眼开始', CX, CY - TARGET_R - 80);
   } else if (s.phase === 'countdown') {
+    const pulse = now > 0 ? 1 + 0.06 * Math.sin(now / 150) : 1;
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.scale(pulse, pulse);
+    ctx.shadowColor = '#ffd60a';
+    ctx.shadowBlur = 24;
     ctx.fillStyle = '#ffd60a';
     ctx.font = '900 96px system-ui, sans-serif';
-    ctx.fillText(String(Math.ceil(s.countdownMs / 1000)), CX, CY);
+    ctx.fillText(String(Math.ceil(s.countdownMs / 1000)), 0, 0);
+    ctx.restore();
   }
 }
