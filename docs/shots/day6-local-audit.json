@@ -1,0 +1,37 @@
+{
+  "when": "2026-11-23T17:51:34.967Z",
+  "demo": {
+    "selectOk": true,
+    "selectBtns": [
+      "接星星转头移动挡板，接住落下的星星",
+      "节奏点头跟着节拍点头"
+    ],
+    "overReached": true,
+    "hasRating": true,
+    "hasBest": true,
+    "hasShare": true,
+    "hasReplay": true,
+    "hasSwitch": true,
+    "score": []
+  },
+  "viewport375": {
+    "vw": 375,
+    "scrollW": 375
+  },
+  "camera": {
+    "camSelect": true,
+    "camReady": true,
+    "layout": {
+      "vw": 1258,
+      "vh": 802,
+      "scrollW": 1243,
+      "previewW": 316,
+      "canvasBottom": 801,
+      "inView": true
+    }
+  },
+  "bad": [],
+  "errors": [
+    "INFO: Created TensorFlow Lite XNNPACK delegate for CPU."
+  ]
+}

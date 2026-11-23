@@ -350,7 +350,7 @@ function StarSession({
         paused={gamePaused}
         fxRef={fxRef}
         overlay={overlayNode}
-        frameClass={mode === 'camera' ? 'max-h-[38vh]' : undefined}
+        frameClass={mode === 'camera' ? 'max-h-[36vh]' : undefined}
       />
     </>
   );
@@ -483,7 +483,7 @@ function RhythmSession({
         gameRef={gameRef}
         fxRef={fxRef}
         overlay={overlayNode}
-        frameClass={mode === 'camera' ? 'max-h-[38vh]' : undefined}
+        frameClass={mode === 'camera' ? 'max-h-[36vh]' : undefined}
       />
     </>
   );
