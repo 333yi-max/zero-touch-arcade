@@ -103,7 +103,7 @@ export default function DebugPanel({
   return (
     <section
       aria-label="调试面板"
-      className="fixed right-4 top-4 z-50 flex w-72 flex-col gap-3 rounded-card border-2 border-edge bg-card p-4 text-base shadow-lg"
+      className="fixed right-4 top-4 z-50 flex max-h-[calc(100dvh-2rem)] w-72 flex-col gap-3 overflow-y-auto rounded-card border-2 border-edge bg-card p-4 text-base shadow-lg"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold">调试面板</h2>

@@ -56,7 +56,7 @@ npm run preview    # 本地预览构建产物
 测试 70 条：`GestureEngine` 17 + sequencer 14 + storage 9 + `landmarksToFrame` 9 + machine 9 + sampling 7 + `buildCsv` 5。
 输入侧是 `GestureEngine` + `landmarksToFrame` + `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
-已知未验：真人镜头前的自然眨眼能不能撑满 `blinkHoldMs: 180`。调试面板的峰值保持和 CSV 导出就是为这条准备的。
+自然眨眼已实测：弱侧峰值只有 0.47~0.55，0.55 的阈值过不了，已降到 0.38；确认动作定为**点头为主、眨眼为辅**。调试面板的峰值保持和 CSV 导出就是为这类核对准备的。
 `delegate` 一栏只表示哪一种委托请求被 `createFromOptions` 接受：GPU 请求成功后，wasm 内部仍打印
 `INFO: Created TensorFlow Lite XNNPACK delegate for CPU.`，没有证据说明推理跑在 GPU 上。所以界面文案只说「加速：GPU 优先」，
 调试面板写「GPU（已请求，实际后端由 MediaPipe 决定）」，不写「已启用」。
