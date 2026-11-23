@@ -99,9 +99,21 @@ calibrationStorage 的 9 条用例原样通过。默认开、刷新后保留（�
 演示模式自动开局并得分；摄像头模式（假摄像头）能看到预览小窗、画布和「开始游戏」按钮；
 `badResponses` 为空，控制台只剩 MediaPipe 的 XNNPACK INFO。截图 `27-day5-demo-play.png`、
 `28-day5-375.png`、`29-day5-camera-ready.png`，证据 `day5-local-audit.json`。
-产物 `index-CumlYZPo.js`（336.76 kB / gzip 106.04 kB），**待发布**。
+产物 `index-CumlYZPo.js`（336.76 kB / gzip 106.04 kB），当天发布（见下节）。
 
 **提交**：`4fc730d`。
+
+### 发布（2026-11-24）
+
+新 actionId `f9697724-200e-425b-904e-afe135030e66` 发到同一 siteId，`published: true / access_mode: public`，
+链接不变，线上资产 `index-CumlYZPo.js`（336.8 kB，即复查修复后的构建）+ `index-0O5_8Qjn.css`。
+
+- 六个资源 curl 全 200：`/` 57.8 kB、`/favicon.svg` 400 B、模型 3.76 MB、wasm js 209.8 kB、wasm 9.42 MB、JS 336.8 kB
+- 无痕线上验收：进演示模式 → 倒计时屏读提示 → 整局打完**得分 410**（300–600 带内）、结束页 + 再玩一次正常；
+  console error = 0、4xx = 0；375 px `scrollWidth = 375`、音效/暂停按钮可见
+- 截图 `30-live-day5-game.png`、`31-live-day5-375.png`
+- 一个小坑：HTML 里资产是相对路径 `./assets/…`，从首页 grep 出来的字符串再拼 `/assets/` 前缀会得到
+  `/assets/assets/…` 404 —— 线上 JS 的 URL 就是 `/assets/index-CumlYZPo.js`，别加第二次前缀。
 
 ---
 

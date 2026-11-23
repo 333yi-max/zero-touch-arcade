@@ -194,6 +194,11 @@ Day 5 加了：`src/game/`（starGame 纯逻辑、Web Audio 合成音效、演�
 当日已重发（新 actionId `87611676-…`，链接不变），线上验收 8 条资源全 200、4xx = 0、375 px 无溢出；
 清缓存公网首屏 ttfb 1.0 s / load 1.4 s。验证截图 20–24 与 `live-audit-day4-fix.json`，详见施工日志。
 
+2026-11-24 重新发布 Day 5 构建（游戏 1「接星星」，新 actionId `f9697724-…`，同一 siteId，链接不变，
+`access_mode: public`）：线上资产 `assets/index-CumlYZPo.js`（336.8 kB）+ `index-0O5_8Qjn.css`。
+线上验收（无痕）：六个资源 curl 全 200；演示整局打完得分 410（300–600 带内）、结束页与「再玩一次」正常；
+console error = 0、4xx = 0；375 px 无横向溢出。截图 30–31 见施工日志与 docs/shots。
+
 站点是 SPA，构建产物是纯静态文件，`vite.config.ts` 已设 `base: './'`，资源走相对路径，因此可以挂在任意子路径下。
 
 **会话目录限制（已实测）**：`prepare_site` 的 `projectRoot` 必须在 host 报告的「当前会话目录」之内，超出会被本地拦截。在 `D:\JD\零触控游乐场\app` 直接准备，返回 `sites_current_session_required`，不产生任何云端资源。
