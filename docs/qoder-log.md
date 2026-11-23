@@ -70,7 +70,7 @@ js 394.72 kB / gzip 122.42 kB，css 31.41 kB / 6.79 kB）；截图 67–70（128
 reduced-motion 首页）：数据卡 148 / 3 / 0 / 0 与真实一致，评委块 lg 四列、375 无溢出，reduced 档星星静态；
 网络 4xx/5xx = 0、console error = 0 ✅。
 
-**提交**：见回填提交。
+**提交**：`d4ce51f`。
 
 ---
 
