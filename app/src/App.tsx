@@ -1,5 +1,6 @@
 import { useReducer, useState } from 'react';
 import CalibrationScreen from './components/CalibrationScreen';
+import DevlogScreen from './components/DevlogScreen';
 import GameScreen from './components/GameScreen';
 import SelectScreen from './components/SelectScreen';
 import StartScreen from './components/StartScreen';
@@ -41,8 +42,12 @@ export default function App() {
     send({ type: 'calibration_finished' });
   };
 
-  // 首页/选游戏/游戏页在桌面上放宽，校准页保持窄栏（文字要一行读得完）
-  const wide = state.screen === 'start' || state.screen === 'select' || state.screen === 'game';
+  // 首页/选游戏/游戏页/开发日志在桌面上放宽，校准页保持窄栏（文字要一行读得完）
+  const wide =
+    state.screen === 'start' ||
+    state.screen === 'select' ||
+    state.screen === 'game' ||
+    state.screen === 'devlog';
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -57,7 +62,12 @@ export default function App() {
             onStartCamera={() => send({ type: 'choose_camera' })}
             onRecalibrate={() => send({ type: 'start_calibration' })}
             onStartDemo={() => send({ type: 'choose_demo' })}
+            onOpenDevlog={() => send({ type: 'open_devlog' })}
           />
+        ) : null}
+
+        {state.screen === 'devlog' ? (
+          <DevlogScreen onBack={() => send({ type: 'home' })} />
         ) : null}
 
         {state.screen === 'calibration' ? (

@@ -27,6 +27,7 @@ const EDGE_PATHS = [
 /** 路由 = 从首页出发要点的按钮文本序列（按 textContent 包含匹配）。 */
 const ROUTES = {
   home: [],
+  devlog: [['开发日志']],
   select: [['演示模式']],
   'game-star': [['演示模式'], ['接星星']],
   'game-rhythm': [['演示模式'], ['节奏点头']],

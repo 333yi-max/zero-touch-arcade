@@ -7,6 +7,7 @@ import {
   Lock,
   Monitor,
   PlayCircle,
+  ScrollText,
   ShieldCheck,
   Timer,
   Zap,
@@ -23,6 +24,7 @@ interface StartScreenProps {
   onStartCamera: () => void;
   onRecalibrate: () => void;
   onStartDemo: () => void;
+  onOpenDevlog: () => void;
 }
 
 const FEATURES: readonly [string, string, string, string][] = [
@@ -48,6 +50,7 @@ export default function StartScreen({
   onStartCamera,
   onRecalibrate,
   onStartDemo,
+  onOpenDevlog,
 }: StartScreenProps) {
   const [notice, setNotice] = useState('');
   // 对外请求在挂载这一刻实测：任何上传/埋点都会让这个数字变成非 0
@@ -170,6 +173,14 @@ export default function StartScreen({
           hint="约 60 秒"
         >
           看 60 秒视频
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={onOpenDevlog}
+          icon={<ScrollText size={20} />}
+          hint="版本记录、踩过的坑与已知限制"
+        >
+          开发日志
         </Button>
       </div>
 

@@ -61,4 +61,10 @@ describe('state/machine', () => {
     const s = next({ ...calibrated, screen: 'game' }, { type: 'home' });
     expect(s).toMatchObject({ screen: 'start', calibrated: true });
   });
+
+  it('开发日志是独立页，返回仍回首页', () => {
+    const s = next(initialState, { type: 'open_devlog' });
+    expect(s).toMatchObject({ screen: 'devlog' });
+    expect(next(s, { type: 'home' })).toMatchObject({ screen: 'start' });
+  });
 });

@@ -1,4 +1,4 @@
-export type Screen = 'start' | 'calibration' | 'select' | 'game';
+export type Screen = 'start' | 'calibration' | 'select' | 'game' | 'devlog';
 
 /** 输入来源：真实摄像头，或浏览器内的虚拟玩家。 */
 export type Mode = 'camera' | 'demo';
@@ -13,6 +13,7 @@ export type AppEvent =
   | { type: 'calibration_skipped' }
   | { type: 'pick_game'; game: GameId }
   | { type: 'switch_game' }
+  | { type: 'open_devlog' }
   | { type: 'home' };
 
 export interface AppState {
@@ -61,6 +62,8 @@ export function next(state: AppState, event: AppEvent): AppState {
       return { ...state, screen: 'game', gameId: event.game, score: 0 };
     case 'switch_game':
       return { ...state, screen: 'select' };
+    case 'open_devlog':
+      return { ...state, screen: 'devlog' };
     case 'home':
       return { ...state, screen: 'start' };
   }
