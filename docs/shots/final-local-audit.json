@@ -1,0 +1,52 @@
+{
+  "when": "2026-11-23T20:25:59.264Z",
+  "devOpen": true,
+  "devOk": true,
+  "devHasData": true,
+  "selOk": true,
+  "cards": [
+    "接星星",
+    "节奏点头",
+    "霓虹贪吃蛇",
+    "打地鼠",
+    "吹蜡烛"
+  ],
+  "results": [
+    {
+      "game": "接星星",
+      "ready": true,
+      "canvases": 1,
+      "text": "返回\n接星星\n演示模式\n\n虚拟玩家演示，开启摄像头即可亲自体验。\n\n得分\n\n0\n\n生命\n\n音效：开\n暂停\n倒计时 1\n玩法提示\n转头左右移动挡板\n金色星星分值更"
+    },
+    {
+      "game": "节奏点头",
+      "ready": true,
+      "canvases": 1,
+      "text": "返回\n节奏点头\n演示模式\n\n虚拟玩家演示，开启摄像头即可亲自体验。\n\n得分\n\n0\n\n拍子\n\n0 / 16\n\n判定\n音效：开\n倒计时 1\n玩法提示\n看收缩环，环与"
+    },
+    {
+      "game": "霓虹贪吃蛇",
+      "ready": true,
+      "canvases": 1,
+      "text": "返回\n霓虹贪吃蛇\n演示模式\n\n虚拟玩家演示，开启摄像头即可亲自体验。\n\n得分\n\n0\n\n时间\n\n1:30\n\n长度\n\n8\n\n音效：开\n暂停\n倒计时 1\n玩法提示\n转"
+    },
+    {
+      "game": "打地鼠",
+      "ready": true,
+      "canvases": 1,
+      "text": "返回\n打地鼠\n演示模式\n\n虚拟玩家演示，开启摄像头即可亲自体验。\n\n得分\n\n0\n\n敲中\n\n0 / 25\n\n漏\n\n0 / 8\n\n音效：开\n暂停\n倒计时 2\n玩法提"
+    },
+    {
+      "game": "吹蜡烛",
+      "ready": true,
+      "canvases": 1,
+      "text": "返回\n吹蜡烛\n演示模式\n\n虚拟玩家演示，开启摄像头即可亲自体验。\n\n得分\n\n0\n\n已灭\n\n0 / 5\n\n音效：开\n倒计时 2\n玩法提示\n对准蜡烛张嘴吹气\n累计张"
+    }
+  ],
+  "narrow": {
+    "vw": 375,
+    "scrollW": 375
+  },
+  "bad": [],
+  "errs": []
+}

@@ -321,6 +321,24 @@ gameId 两游戏）核对后全部更新。
 
 ---
 
+## 2026-11-24 · 第 10 轮后复查：切换游戏时 AudioContext 异常
+
+Qoder 的 10 轮报告写的是 console error 0，但我用 CDP 把五个游戏逐个开局、返回、再进，抓到了 **836 次**
+`Uncaught (in promise) InvalidStateError: AudioContext is closed.`。
+
+根因：`src/game/sound.ts` 的 `dispose()` 对已经关闭的 AudioContext 再次 `ctx.close()`，
+返回的 rejected promise 被 `void` 掉、没人接住；`resume()` 在浏览器拒绝自动播放时同样会 reject。
+页面切换时旧游戏会话被重复清理，错误就刷屏了。
+
+修法：`close()` 前判断 `state !== 'closed'` 并 `.catch()`；`resume()` 也接住。行为不变，只是不再产生未处理拒绝。
+
+验证：五个游戏逐个开局、返回、再进，异常 **0**；192 测试全绿；构建 `index-D77sciq2.js`（430.12 kB / gzip 131.64 kB）；
+首页 / 开发日志 / 选游戏 / 五个游戏 / 375px 截图 `111–115`，证据 `final-local-audit.json`。
+
+**提交**：`________`。
+
+---
+
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡
 
 交付内容（提交 `c95a654`）：状态机加 `select` 屏与 `gameId`，删掉 `result` 屏和 `game_finished`/`replay` 两个死事件；

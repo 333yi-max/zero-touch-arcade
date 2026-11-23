@@ -49,7 +49,8 @@ export function createGameSounds(): GameSounds {
       master.gain.value = muted ? 0 : MASTER_VOLUME;
       master.connect(ctx.destination);
     }
-    if (ctx.state === 'suspended') void ctx.resume();
+    // resume 在浏览器拒绝自动播放时会 reject；不接住就是一条 uncaught promise
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
     return ctx;
   };
 
@@ -203,7 +204,13 @@ export function createGameSounds(): GameSounds {
       applyTracking();
     },
     dispose(): void {
-      void ctx?.close();
+      // close() 对已关闭的上下文会 reject（切换游戏时旧会话被重复清理），
+      // 之前 void 掉不接住，控制台会刷上百条 InvalidStateError
+      try {
+        if (ctx && ctx.state !== 'closed') void ctx.close().catch(() => {});
+      } catch {
+        /* 已经关了 */
+      }
       ctx = null;
       master = null;
       trackingOsc = null;
