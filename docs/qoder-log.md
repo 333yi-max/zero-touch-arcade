@@ -124,7 +124,7 @@ Playwright + 假摄像头跑构建产物验了：第 1 步渲染与 `aria-valuet
 
 截图：`docs/shots/17-live-calibration.png`、`18-live-saved-calibration.png`、`19-live-permission-fallback.png`。
 
-**提交**：`<待回填>`。
+**提交**：`00847c7`。
 
 ---
 
