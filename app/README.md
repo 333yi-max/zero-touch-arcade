@@ -236,6 +236,13 @@ Day 6 加了：`rhythmGame/demoRhythm/bestScores/shareCard` 纯模块、`useRhyt
 线上验收（无痕）：六个资源 curl 全 200；演示整局打完得分 410（300–600 带内）、结束页与「再玩一次」正常；
 console error = 0、4xx = 0；375 px 无横向溢出。截图 30–31 见施工日志与 docs/shots。
 
+2026-11-24 重新发布 Day 6 构建（选游戏页 + 节奏点头 + 统一结果卡与分享卡，新 actionId `7f4b3a3d-…`，
+同一 siteId，链接不变，`access_mode: public`）：线上资产 `assets/index-BRq1Rx-K.js`（352.5 kB）+
+`index-DTQDdeKD.css`。线上验收（无痕）：九个资源 curl 全 200；28 条检查全过 —— 演示整局接星星 230 分、
+结果卡 4 秒稳定、分享卡 PNG 251 KB 下载、节奏点头 A / 88% / 1400、Web Share 优先路径、
+`zt.best.v1` 两个游戏都在、坏数据不崩、375 px 三屏无溢出、console error = 0、4xx/5xx = 0。
+截图 39–45 见施工日志与 docs/shots。
+
 站点是 SPA，构建产物是纯静态文件，`vite.config.ts` 已设 `base: './'`，资源走相对路径，因此可以挂在任意子路径下。
 
 **会话目录限制（已实测）**：`prepare_site` 的 `projectRoot` 必须在 host 报告的「当前会话目录」之内，超出会被本地拦截。在 `D:\JD\零触控游乐场\app` 直接准备，返回 `sites_current_session_required`，不产生任何云端资源。

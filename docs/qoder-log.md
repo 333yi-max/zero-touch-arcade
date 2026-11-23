@@ -63,6 +63,21 @@ Day 6 的 HUD 变高了，这 15px 就露出来了。两个游戏的摄像头画
 
 **提交**：`421dfb1`。
 
+### 发布（2026-11-24）
+
+新 actionId `7f4b3a3d-b08e-471c-808b-367b0bcf0683` 发到同一 siteId，`published: true / access_mode: public`，
+链接不变，线上资产换成 `index-BRq1Rx-K.js`（352.5 kB）+ `index-DTQDdeKD.css`。
+
+- 九个资源 curl 全 200：`/` 57.8 kB、favicon、JS 352.5 kB、CSS 19 kB、模型 3.76 MB、wasm js 209.8 kB、
+  wasm 9.42 MB、nosimd wasm 9.29 MB、nosimd js 209.7 kB。小插曲：nosimd 的文件名是
+  `vision_wasm_nosimd_internal.wasm`（nosimd 在 internal 前面），第一次按 `internal_nosimd` 猜出个 404，
+  对照 `dist/wasm/` 目录才发现是自己拼错。
+- 无痕线上验收 28 条全过：演示整局接星星 **230 分**（300–600 带内）→ 结果卡 4 秒稳定 + 最佳成绩 →
+  分享卡 PNG 251 KB（`zero-touch-score-20261124.png`）→ 节奏点头 A / 88% / 1400 → Web Share 打桩验证优先路径 →
+  `zt.best.v1` 两个游戏都在（`{"star":230,"rhythm":1400}`）→ 回首页 → 坏数据 `{oops` 不崩 →
+  375px 三屏无横向溢出 → 两游戏 fps 61 → console error 0、4xx/5xx 0。
+- 截图 `39-day6-live-start.png` 至 `45-day6-live-375-rhythm.png`，证据 `day6-live/report.txt`。
+
 ---
 
 ## 2026-11-24 · Day 5：游戏 1「接星星」
