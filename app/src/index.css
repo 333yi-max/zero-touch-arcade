@@ -25,6 +25,7 @@
 
   --animate-fade-in-up: fade-in-up 0.5s var(--ease-out-soft) both;
   --animate-glow-drift: glow-drift 14s ease-in-out infinite alternate;
+  --animate-fall-star: fall-star 5s linear infinite;
 
   @keyframes fade-in-up {
     from {
@@ -43,6 +44,24 @@
     }
     to {
       transform: translate3d(2%, 1.5%, 0) scale(1.06);
+    }
+  }
+
+  /* 首页示意卡里的星星飘落：keyframes 接管 top，reduced-motion 时全局兜底回静态位置 */
+  @keyframes fall-star {
+    0% {
+      top: -6%;
+      opacity: 0;
+    }
+    8% {
+      opacity: 1;
+    }
+    85% {
+      opacity: 0.9;
+    }
+    100% {
+      top: 96%;
+      opacity: 0;
     }
   }
 
@@ -84,6 +103,9 @@
   }
   .stagger-3 {
     animation-delay: 220ms;
+  }
+  .stagger-4 {
+    animation-delay: 300ms;
   }
 
   /* 卡片统一质感：顶部高光渐变 */

@@ -47,6 +47,31 @@ css 29.08 kB（gzip 6.43 kB）、html 0.77 kB（gzip 0.53 kB）。
 
 **提交**：`a8bb490`。
 
+### 第 3 轮 · 首页内容饱满
+
+**改了什么**：
+- 新增「评委 30 秒」区块（这是什么 / 给谁用 / 怎么玩 + 演示模式入口 / 证据），插在三张特性卡与 CTA 之间。
+- 数据卡改真实数字：测试数由 `scripts/testcount.mjs` 在 npm predev/prebuild 跑 `vitest list` 生成
+  `src/generated/testCount.ts`（数不出任何测试就退出码 1，拒绝生成假数字）；游戏数从共享元数据
+  `src/components/gameMeta.ts` 的 GAMES 长度推导（选游戏页与首页同一份，第 4/5 轮加游戏自动变 5）；
+  对外请求数运行时用 `performance.getEntriesByType('resource')` 实测（`game/networkStats.ts` 纯函数 + 3 条单测）；
+  「0 次上传」由架构保证、由对外请求计数背书。
+- 玩法示意卡：星星加飘落循环动画（keyframes 接管 top、负延迟错峰），reduced-motion 回退静态位置。
+- FEATURES「三个小游戏」改为按 GAMES.length 拼接，不再手写数字。
+
+**发现 / 根因 / 修法**：
+1. 首页「123 条测试 / 2 个游戏」是第 1 轮基线审计发现的过期手写数字，根因是文案硬编码不随代码演进。
+   修法：测试数生成、游戏数推导、请求数实测，全部运行时真实值。
+2. `spawnSync('npx.cmd')` 在 Windows 报 EINVAL（.cmd 必须走 shell）。修法：testcount 直接
+   `node node_modules/vitest/vitest.mjs list`，跨平台且更快。
+
+**验证**：npm test 148/148 ✅（新增 networkStats 3 条）；npm run build ✅（prebuild 自动重生成测试数 148；
+js 394.72 kB / gzip 122.42 kB，css 31.41 kB / 6.79 kB）；截图 67–70（1280 首页/选游戏、375 首页、
+reduced-motion 首页）：数据卡 148 / 3 / 0 / 0 与真实一致，评委块 lg 四列、375 无溢出，reduced 档星星静态；
+网络 4xx/5xx = 0、console error = 0 ✅。
+
+**提交**：见回填提交。
+
 ---
 
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡

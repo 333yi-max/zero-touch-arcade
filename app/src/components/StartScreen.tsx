@@ -1,5 +1,20 @@
 import { useState } from 'react';
-import { Hand, Lock, Monitor, ShieldCheck, Timer, Zap, type LucideIcon } from 'lucide-react';
+import {
+  BadgeCheck,
+  Hand,
+  HeartHandshake,
+  HelpCircle,
+  Lock,
+  Monitor,
+  PlayCircle,
+  ShieldCheck,
+  Timer,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+import { countExternalResources } from '../game/networkStats';
+import { TEST_COUNT } from '../generated/testCount';
+import { GAMES } from './gameMeta';
 import Button from './Button';
 
 interface StartScreenProps {
@@ -13,7 +28,7 @@ interface StartScreenProps {
 const FEATURES: readonly [string, string, string, string][] = [
   ['01', '不用手', '转头移动、点头确认，眨眼和张嘴当辅助键。', 'zap'],
   ['02', '画面不上传', '人脸在你的浏览器里识别，请求不出本机。', 'shield-check'],
-  ['03', '三分钟一局', '30 秒校准，三个小游戏，随时能停。', 'timer'],
+  ['03', '三分钟一局', `30 秒校准，${GAMES.length} 个小游戏，随时能停。`, 'timer'],
 ];
 
 const FEATURE_ICONS: Record<string, LucideIcon> = {
@@ -28,12 +43,6 @@ const NOTICE_ITEMS: { icon: LucideIcon; text: string }[] = [
   { icon: Hand, text: '没有摄像头也没关系，选「演示模式」即可看完整个玩法。' },
 ];
 
-const STATS: readonly [string, string][] = [
-  ['123', '条自动化测试'],
-  ['2', '个小游戏'],
-  ['0', '次画面上传'],
-];
-
 export default function StartScreen({
   hasCalibration,
   onStartCamera,
@@ -41,6 +50,16 @@ export default function StartScreen({
   onStartDemo,
 }: StartScreenProps) {
   const [notice, setNotice] = useState('');
+  // 对外请求在挂载这一刻实测：任何上传/埋点都会让这个数字变成非 0
+  const [externalRequests] = useState(() =>
+    countExternalResources(performance.getEntriesByType('resource'), location.origin),
+  );
+  const stats: readonly [string, string][] = [
+    [String(TEST_COUNT), '条自动化测试'],
+    [String(GAMES.length), '个小游戏'],
+    [String(externalRequests), '个对外请求'],
+    ['0', '次画面上传'],
+  ];
 
   return (
     <div className="relative flex flex-col gap-10">
@@ -89,7 +108,48 @@ export default function StartScreen({
         })}
       </div>
 
-      <div className="animate-fade-in-up stagger-3 flex flex-col gap-4">
+      <section
+        aria-label="评委三十秒速览"
+        className="animate-fade-in-up stagger-3 card-surface flex flex-col gap-4 rounded-card border border-edge p-5 shadow-card"
+      >
+        <h2 className="text-xl font-bold">评委 30 秒</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <JudgeItem
+            icon={HelpCircle}
+            title="这是什么"
+            text="纯前端的体感游戏合集：摄像头识别头、眼、嘴的动作，代替手来操作。"
+          />
+          <JudgeItem
+            icon={HeartHandshake}
+            title="给谁用"
+            text="上肢障碍者、术后康复者、行动不便的长辈，以及想换种方式玩游戏的人。"
+          />
+          <div className="flex flex-col gap-1.5">
+            <p className="flex items-center gap-2 text-base font-bold">
+              <PlayCircle size={18} aria-hidden="true" className="shrink-0 text-accent" />
+              怎么玩
+            </p>
+            <p className="text-base leading-relaxed text-dim">
+              不用摄像头、不用等待，虚拟玩家直接打一局给你看。
+            </p>
+            <button
+              type="button"
+              onClick={onStartDemo}
+              className="mt-1 inline-flex w-fit items-center gap-2 self-start rounded-full border-2 border-accent/60 bg-accent/10 px-4 py-1.5 text-base font-bold text-accent transition duration-200 ease-out-soft hover:bg-accent/20"
+            >
+              <PlayCircle size={16} aria-hidden="true" />
+              演示模式
+            </button>
+          </div>
+          <JudgeItem
+            icon={BadgeCheck}
+            title="证据"
+            text={`${TEST_COUNT} 条自动化测试 · ${GAMES.length} 个游戏 · 0 对外请求 · 0 次上传。`}
+          />
+        </div>
+      </section>
+
+      <div className="animate-fade-in-up stagger-4 flex flex-col gap-4">
         <Button
           onClick={onStartCamera}
           hint={hasCalibration ? '上次已校准 · 直接进入' : '需要摄像头 · 约 30 秒校准'}
@@ -120,8 +180,8 @@ export default function StartScreen({
 
         <aside className="flex flex-col gap-4 lg:col-span-2 lg:sticky lg:top-8">
           <PreviewCard />
-          <div className="grid grid-cols-3 gap-3">
-            {STATS.map(([value, label]) => (
+          <div className="grid grid-cols-2 gap-3">
+            {stats.map(([value, label]) => (
               <div
                 key={label}
                 className="card-surface rounded-card border border-edge px-2 py-4 text-center shadow-card"
@@ -150,15 +210,36 @@ export default function StartScreen({
   );
 }
 
+function JudgeItem({
+  icon: Icon,
+  title,
+  text,
+}: {
+  icon: LucideIcon;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="flex items-center gap-2 text-base font-bold">
+        <Icon size={18} aria-hidden="true" className="shrink-0 text-accent" />
+        {title}
+      </p>
+      <p className="text-base leading-relaxed text-dim">{text}</p>
+    </div>
+  );
+}
+
 /** 首页右侧的静态玩法示意：不加载摄像头也能一眼看懂怎么玩。 */
 function PreviewCard() {
-  const stars: readonly [number, number][] = [
-    [20, 22],
-    [56, 16],
-    [76, 40],
-    [36, 54],
-    [86, 66],
-    [12, 72],
+  /** [left%, 静态 top%, 时长 s, 延迟 s]；静态位置是 reduced-motion 下的兜底。 */
+  const stars: readonly [number, number, number, number][] = [
+    [20, 22, 5.2, -1.2],
+    [56, 16, 6.4, -3.4],
+    [76, 40, 4.6, -2.1],
+    [36, 54, 5.8, -4.4],
+    [86, 66, 6.8, -0.6],
+    [12, 72, 5.4, -2.8],
   ];
   return (
     <figure className="card-surface overflow-hidden rounded-card border border-edge shadow-card">
@@ -171,12 +252,17 @@ function PreviewCard() {
       </div>
       <div className="relative aspect-[4/3] w-full bg-[#04060c]">
         <div aria-hidden="true" className="bg-arcade pointer-events-none absolute inset-0 opacity-60" />
-        {stars.map(([left, top]) => (
+        {stars.map(([left, top, dur, delay]) => (
           <span
             key={`${left}-${top}`}
             aria-hidden="true"
-            className="absolute h-2.5 w-2.5 rotate-45 bg-accent shadow-[0_0_10px_rgba(255,214,10,0.8)]"
-            style={{ left: `${left}%`, top: `${top}%` }}
+            className="animate-fall-star absolute h-2.5 w-2.5 rotate-45 bg-accent shadow-[0_0_10px_rgba(255,214,10,0.8)]"
+            style={{
+              left: `${left}%`,
+              top: `${top}%`,
+              animationDuration: `${dur}s`,
+              animationDelay: `${delay}s`,
+            }}
           />
         ))}
         <div

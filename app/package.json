@@ -7,7 +7,9 @@
     "node": ">=20.19"
   },
   "scripts": {
+    "predev": "node scripts/testcount.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/testcount.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
