@@ -1,18 +1,4 @@
 import { useState } from 'react';
-import {
-  BadgeCheck,
-  Hand,
-  HeartHandshake,
-  HelpCircle,
-  Lock,
-  Monitor,
-  PlayCircle,
-  ScrollText,
-  ShieldCheck,
-  Timer,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
 import { countExternalResources } from '../game/networkStats';
 import { TEST_COUNT } from '../generated/testCount';
 import { GAMES } from './gameMeta';
@@ -27,22 +13,11 @@ interface StartScreenProps {
   onOpenDevlog: () => void;
 }
 
-const FEATURES: readonly [string, string, string, string][] = [
-  ['01', '不用手', '转头移动、点头确认，眨眼和张嘴当辅助键。', 'zap'],
-  ['02', '画面不上传', '人脸在你的浏览器里识别，请求不出本机。', 'shield-check'],
-  ['03', '三分钟一局', `30 秒校准，${GAMES.length} 个小游戏，随时能停。`, 'timer'],
-];
-
-const FEATURE_ICONS: Record<string, LucideIcon> = {
-  zap: Zap,
-  'shield-check': ShieldCheck,
-  timer: Timer,
-};
-
-const NOTICE_ITEMS: { icon: LucideIcon; text: string }[] = [
-  { icon: Lock, text: '视频只在你的浏览器里处理，不会上传到任何服务器。' },
-  { icon: Monitor, text: '建议使用 Chrome 或 Edge，并在弹出提示时允许使用摄像头。' },
-  { icon: Hand, text: '没有摄像头也没关系，选「演示模式」即可看完整个玩法。' },
+const FEATURES: readonly [string, string, string][] = [
+  ['01', '不用手', '转头移动、点头确认，眨眼和张嘴当辅助键。'],
+  ['02', '画面不上传', '人脸在你的浏览器里识别，请求不出本机。'],
+  ['03', '三分钟一局', `30 秒校准，${GAMES.length} 个小游戏，随时能停。`],
+  ['04', '为谁而做', '上肢障碍者、术后康复者、行动不便的长辈。'],
 ];
 
 export default function StartScreen({
@@ -52,238 +27,150 @@ export default function StartScreen({
   onStartDemo,
   onOpenDevlog,
 }: StartScreenProps) {
-  const [notice, setNotice] = useState('');
   // 对外请求在挂载这一刻实测：任何上传/埋点都会让这个数字变成非 0
   const [externalRequests] = useState(() =>
     countExternalResources(performance.getEntriesByType('resource'), location.origin),
   );
-  const stats: readonly [string, string][] = [
-    [String(TEST_COUNT), '条自动化测试'],
-    [String(GAMES.length), '个小游戏'],
-    [String(externalRequests), '个对外请求'],
-    ['0', '次画面上传'],
-  ];
 
   return (
-    <div className="relative flex flex-col gap-10">
-      <div
-        aria-hidden="true"
-        className="bg-arcade pointer-events-none absolute -inset-x-5 -top-8 -bottom-10 -z-10"
-      />
+    <div className="relative flex min-h-[calc(100dvh-6rem)] flex-col overflow-hidden">
+      <div aria-hidden="true" className="bg-arcade pointer-events-none absolute -inset-12 -z-10" />
+      <FloatingCards />
 
-      <div className="grid gap-10 lg:grid-cols-5 lg:items-start">
-        <div className="flex flex-col gap-10 lg:col-span-3">
-      <header className="animate-fade-in-up flex flex-col gap-5">
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-bold tracking-[0.3em] text-accent">
-            HACK4GOOD · 技术向善
-          </p>
-          <span aria-hidden="true" className="h-0.5 w-14 bg-accent/40" />
-        </div>
-        <h1 className="font-display text-5xl leading-[1.08] tracking-[0.06em] sm:text-7xl">
+      <div className="relative flex items-center justify-between text-xs font-semibold tracking-[0.35em] text-dim">
+        <span>ZERO TOUCH ARCADE</span>
+        <span className="text-accent/80">HACK4GOOD · 技术向善</span>
+      </div>
+
+      <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-5 py-10 text-center">
+        <StarMark />
+        <p className="text-xs font-semibold tracking-[0.5em] text-dim">A MOMENT BEFORE PLAY</p>
+        <h1 className="font-display text-6xl leading-none tracking-[0.08em] sm:text-8xl">
           零触控游乐场
         </h1>
-        <p className="text-xs font-semibold tracking-[0.5em] text-dim">
-          ZERO TOUCH ARCADE
-        </p>
-        <p className="mt-1 text-2xl text-dim sm:text-3xl">不用手，也能玩三分钟。</p>
-        <p className="max-w-prose text-lg text-dim">
+        <div aria-hidden="true" className="h-px w-28 bg-accent/50" />
+        <p className="text-2xl text-dim sm:text-3xl">不用手，也能玩三分钟。</p>
+        <p className="max-w-xl text-lg leading-relaxed text-dim">
           给上肢障碍者、术后康复者、行动不便的长辈：只用头、眼睛和嘴，就能玩一局游戏。
         </p>
-      </header>
 
-      <div className="animate-fade-in-up stagger-2 grid gap-3 sm:grid-cols-3">
-        {FEATURES.map(([no, title, detail, icon]) => {
-          const Icon = FEATURE_ICONS[icon] ?? Zap;
-          return (
-            <div
-              key={no}
-              className="card-surface flex flex-col gap-1.5 rounded-card border border-edge p-5 shadow-card transition duration-200 ease-out-soft hover:border-accent/50 hover:bg-card-hi"
-            >
-              <div className="flex items-center justify-between">
-                <Icon size={24} strokeWidth={1.75} aria-hidden="true" className="text-accent" />
-                <span className="text-lg font-black tracking-[0.2em] text-accent/70">{no}</span>
-              </div>
-              <span className="text-xl font-bold">{title}</span>
-              <span className="text-base leading-relaxed text-dim">{detail}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      <section
-        aria-label="评委三十秒速览"
-        className="animate-fade-in-up stagger-3 card-surface flex flex-col gap-4 rounded-card border border-edge p-5 shadow-card"
-      >
-        <h2 className="text-xl font-bold">评委 30 秒</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <JudgeItem
-            icon={HelpCircle}
-            title="这是什么"
-            text="纯前端的体感游戏合集：摄像头识别头、眼、嘴的动作，代替手来操作。"
-          />
-          <JudgeItem
-            icon={HeartHandshake}
-            title="给谁用"
-            text="上肢障碍者、术后康复者、行动不便的长辈，以及想换种方式玩游戏的人。"
-          />
-          <div className="flex flex-col gap-1.5">
-            <p className="flex items-center gap-2 text-base font-bold">
-              <PlayCircle size={18} aria-hidden="true" className="shrink-0 text-accent" />
-              怎么玩
-            </p>
-            <p className="text-base leading-relaxed text-dim">
-              不用摄像头、不用等待，虚拟玩家直接打一局给你看。
-            </p>
-            <button
-              type="button"
-              onClick={onStartDemo}
-              className="mt-1 inline-flex min-h-11 w-fit items-center gap-2 self-start rounded-full border-2 border-accent/60 bg-accent/10 px-4 py-2 text-base font-bold text-accent transition duration-200 ease-out-soft hover:bg-accent/20"
-            >
-              <PlayCircle size={16} aria-hidden="true" />
-              演示模式
-            </button>
-          </div>
-          <JudgeItem
-            icon={BadgeCheck}
-            title="证据"
-            text={`${TEST_COUNT} 条自动化测试 · ${GAMES.length} 个游戏 · ${externalRequests} 个对外请求 · 0 次上传。`}
-          />
-        </div>
-      </section>
-
-      <div className="animate-fade-in-up stagger-4 flex flex-col gap-4">
-        <Button
-          onClick={onStartCamera}
-          hint={hasCalibration ? '上次已校准 · 直接进入' : '需要摄像头 · 约 30 秒校准'}
-        >
-          开始体验
-        </Button>
-        {hasCalibration ? (
-          <Button variant="secondary" onClick={onRecalibrate} hint="换个坐姿、换个人，重新量一遍">
-            重新校准
+        <div className="mt-3 flex w-full max-w-sm flex-col gap-3">
+          <Button
+            onClick={onStartCamera}
+            hint={hasCalibration ? '上次已校准 · 直接进入' : '需要摄像头 · 约 30 秒校准'}
+          >
+            开始体验
           </Button>
-        ) : null}
-        <Button variant="secondary" onClick={onStartDemo} hint="不用摄像头，看虚拟玩家怎么玩">
-          演示模式
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => setNotice('60 秒介绍视频还在制作中，上线后这里可以直接播放。')}
-          hint="约 60 秒"
-        >
-          看 60 秒视频
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={onOpenDevlog}
-          icon={<ScrollText size={20} />}
-          hint="版本记录、踩过的坑与已知限制"
-        >
-          开发日志
-        </Button>
-      </div>
-
-      <p role="status" aria-live="polite" className="min-h-6 text-lg font-semibold text-accent">
-        {notice}
-      </p>
+          {hasCalibration ? (
+            <Button variant="secondary" onClick={onRecalibrate} hint="换个坐姿、换个人，重新量一遍">
+              重新校准
+            </Button>
+          ) : null}
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="secondary" onClick={onStartDemo} hint="不用摄像头">
+              演示模式
+            </Button>
+            <Button variant="secondary" onClick={onOpenDevlog} hint="版本与踩坑记录">
+              开发日志
+            </Button>
+          </div>
         </div>
 
-        <aside className="flex flex-col gap-4 lg:col-span-2 lg:sticky lg:top-8">
-          <PreviewCard />
-          <div className="grid grid-cols-2 gap-3">
-            {stats.map(([value, label]) => (
-              <div
-                key={label}
-                className="card-surface rounded-card border border-edge px-2 py-4 text-center shadow-card"
-              >
-                <p className="text-2xl font-black tabular-nums text-accent">{value}</p>
-                <p className="mt-1 text-sm leading-tight text-dim">{label}</p>
-              </div>
-            ))}
-          </div>
-        </aside>
+        <p className="text-sm text-dim">
+          {TEST_COUNT} 条测试 · {GAMES.length} 个游戏 · {externalRequests} 个对外请求 · 0 次上传
+        </p>
       </div>
 
-      <section
-        aria-label="使用前请知道"
-        className="card-surface flex flex-col gap-3 rounded-card border border-edge p-5 text-lg shadow-card"
-      >
-        <h2 className="text-xl font-bold">使用前请知道</h2>
-        {NOTICE_ITEMS.map(({ icon: Icon, text }) => (
-          <p key={text} className="flex gap-2.5 text-dim">
-            <Icon size={20} aria-hidden="true" className="mt-1 shrink-0 text-ring" />
-            <span>{text}</span>
-          </p>
+      <div className="relative grid gap-4 border-t border-edge/60 pt-5 sm:grid-cols-2 lg:grid-cols-4">
+        {FEATURES.map(([no, title, detail]) => (
+          <div key={no} className="flex flex-col gap-1">
+            <span className="text-xs font-black tracking-[0.25em] text-accent/70">{no}</span>
+            <span className="text-lg font-bold">{title}</span>
+            <span className="text-base leading-relaxed text-dim">{detail}</span>
+          </div>
         ))}
-      </section>
+      </div>
     </div>
   );
 }
 
-function JudgeItem({
-  icon: Icon,
-  title,
-  text,
+/** 四角星线框：加载页与首页共用的品牌符号。 */
+export function StarMark({ size = 64 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      aria-hidden="true"
+      className="text-accent drop-shadow-[0_0_12px_rgba(255,214,10,0.35)]"
+    >
+      <path
+        d="M32 3 C34.2 22 42 29.8 61 32 C42 34.2 34.2 42 32 61 C29.8 42 22 34.2 3 32 C22 29.8 29.8 22 32 3 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** 首页两侧漂浮的游戏卡：装饰，不参与交互。 */
+function FloatingCards() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
+      <FloatCard className="left-[1%] top-[12%] -rotate-6" label="STAR CATCH">
+        <span className="absolute left-[18%] top-[22%] h-2 w-2 rotate-45 bg-accent shadow-[0_0_8px_rgba(255,214,10,0.9)]" />
+        <span className="absolute left-[62%] top-[38%] h-2 w-2 rotate-45 bg-accent shadow-[0_0_8px_rgba(255,214,10,0.9)]" />
+        <span className="absolute right-[16%] top-[18%] h-2 w-2 rotate-45 bg-accent shadow-[0_0_8px_rgba(255,214,10,0.9)]" />
+        <span className="absolute bottom-[16%] left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-ring shadow-[0_0_14px_rgba(88,196,255,0.9)]" />
+      </FloatCard>
+
+      <FloatCard className="left-[3%] bottom-[16%] rotate-3" label="RHYTHM">
+        <span className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent/70" />
+        <span className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ring/70" />
+      </FloatCard>
+
+      <FloatCard className="right-[2%] top-[14%] rotate-6" label="WHACK">
+        <span className="absolute left-[22%] top-[26%] h-2 w-2 rounded-full bg-edge" />
+        <span className="absolute left-[48%] top-[26%] h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgba(255,214,10,0.9)]" />
+        <span className="absolute left-[74%] top-[26%] h-2 w-2 rounded-full bg-edge" />
+        <span className="absolute left-[22%] top-[56%] h-2 w-2 rounded-full bg-edge" />
+        <span className="absolute left-[48%] top-[56%] h-2 w-2 rounded-full bg-edge" />
+        <span className="absolute left-[74%] top-[56%] h-2 w-2 rounded-full bg-edge" />
+        <span className="absolute left-[48%] top-[56%] h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent/60" />
+      </FloatCard>
+
+      <FloatCard className="right-[4%] bottom-[14%] -rotate-3" label="CANDLE">
+        <span className="absolute bottom-[22%] left-[26%] h-6 w-2 rounded-sm bg-edge" />
+        <span className="absolute bottom-[22%] left-[48%] h-6 w-2 rounded-sm bg-edge" />
+        <span className="absolute bottom-[22%] left-[70%] h-6 w-2 rounded-sm bg-edge" />
+        <span className="absolute bottom-[52%] left-[26%] h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_rgba(255,214,10,0.9)]" />
+        <span className="absolute bottom-[52%] left-[48%] h-2 w-2 rounded-full bg-accent shadow-[0_0_10px_rgba(255,214,10,0.9)]" />
+        <span className="absolute bottom-[52%] left-[70%] h-2 w-2 rounded-full bg-edge" />
+      </FloatCard>
+    </div>
+  );
+}
+
+function FloatCard({
+  className,
+  label,
+  children,
 }: {
-  icon: LucideIcon;
-  title: string;
-  text: string;
+  className: string;
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="flex items-center gap-2 text-base font-bold">
-        <Icon size={18} aria-hidden="true" className="shrink-0 text-accent" />
-        {title}
-      </p>
-      <p className="text-base leading-relaxed text-dim">{text}</p>
+    <div
+      className={`card-surface absolute w-40 overflow-hidden rounded-xl border border-edge/70 opacity-80 shadow-card ${className}`}
+    >
+      <div className="flex items-center justify-between border-b border-edge/50 px-2.5 py-1.5">
+        <span className="text-[9px] font-bold tracking-[0.25em] text-dim">{label}</span>
+        <span className="h-1 w-1 rounded-full bg-accent/80" />
+      </div>
+      <div className="relative h-24 bg-[#04060c]">{children}</div>
     </div>
-  );
-}
-
-/** 首页右侧的静态玩法示意：不加载摄像头也能一眼看懂怎么玩。 */
-function PreviewCard() {
-  /** [left%, 静态 top%, 时长 s, 延迟 s]；静态位置是 reduced-motion 下的兜底。 */
-  const stars: readonly [number, number, number, number][] = [
-    [20, 22, 5.2, -1.2],
-    [56, 16, 6.4, -3.4],
-    [76, 40, 4.6, -2.1],
-    [36, 54, 5.8, -4.4],
-    [86, 66, 6.8, -0.6],
-    [12, 72, 5.4, -2.8],
-  ];
-  return (
-    <figure className="card-surface overflow-hidden rounded-card border border-edge shadow-card">
-      <div className="flex items-center justify-between border-b border-edge/60 px-4 py-3">
-        <span className="text-xs font-bold tracking-[0.3em] text-dim">STAR CATCH / LIVE</span>
-        <span className="flex items-center gap-1.5 text-xs font-bold text-ring">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-ring" />
-          本地识别
-        </span>
-      </div>
-      <div className="relative aspect-[4/3] w-full bg-[#04060c]">
-        <div aria-hidden="true" className="bg-arcade pointer-events-none absolute inset-0 opacity-60" />
-        {stars.map(([left, top, dur, delay]) => (
-          <span
-            key={`${left}-${top}`}
-            aria-hidden="true"
-            className="animate-fall-star absolute h-2.5 w-2.5 rotate-45 bg-accent shadow-[0_0_10px_rgba(255,214,10,0.8)]"
-            style={{
-              left: `${left}%`,
-              top: `${top}%`,
-              animationDuration: `${dur}s`,
-              animationDelay: `${delay}s`,
-            }}
-          />
-        ))}
-        <div
-          aria-hidden="true"
-          className="absolute bottom-[12%] left-[62%] h-3 w-28 -translate-x-1/2 rounded-full bg-ring shadow-[0_0_24px_rgba(88,196,255,0.9)]"
-        />
-        <span className="absolute bottom-3 left-4 rounded-full bg-page/80 px-3 py-1 text-xs font-semibold text-dim">
-          转头移动挡板 · 点头确认
-        </span>
-      </div>
-    </figure>
   );
 }

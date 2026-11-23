@@ -1,4 +1,5 @@
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
+import BootLoading from './components/BootLoading';
 import CalibrationScreen from './components/CalibrationScreen';
 import DevlogScreen from './components/DevlogScreen';
 import GameScreen from './components/GameScreen';
@@ -23,6 +24,12 @@ export default function App() {
   const [state, send] = useReducer(next, initialState, (s) => ({ ...s, calibrated: boot.has }));
   const [calibration, setCalibration] = useState<Required<Calibration> | null>(boot.calibration);
   const [saveNotice, setSaveNotice] = useState('');
+  const [booting, setBooting] = useState(true);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setBooting(false), 900);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const finishCalibration = (result: CalibrationResult | null): void => {
     if (result === null) {
@@ -41,6 +48,8 @@ export default function App() {
     );
     send({ type: 'calibration_finished' });
   };
+
+  if (booting) return <BootLoading />;
 
   // 首页/选游戏/游戏页/开发日志在桌面上放宽，校准页保持窄栏（文字要一行读得完）
   const wide =
