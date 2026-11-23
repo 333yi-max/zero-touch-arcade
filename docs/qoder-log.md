@@ -148,6 +148,38 @@ npm run build ✅（js 410.49 kB / gzip 125.40 kB，css 31.43 kB / 6.79 kB）；
 
 **提交**：`d07f98e`。
 
+### 第 6 轮 · 游戏页 HUD 与结果卡统一
+
+**改了什么**：
+- 新共享子件 `src/components/gameHud.tsx`：HudContainer（HUD 外壳，xl 起竖排 + 行间细分隔线）、
+  HudField（小标签 + 数值）、HudScore（「得分」小标签 + 大数字 tabular-nums）、HudStat、HudBadge
+  （accent / accent-hi 两档）、HudLives、CountdownAnnouncer（倒计时 sr-only 播报）、
+  HudActions + MuteButton + PauseButton（音效/暂停按钮全 HUD 样式与位置对齐）。
+- 五个 HudBar（Star/Rhythm/Snake/Whack/Candle）全部改用共享子件，结构统一：得分 → 专属行
+  （生命 / 拍子+判定 / 时间+长度 / 敲中+漏 / 已灭）→ 徽章（连击 / 闪耀 / 连吹）→ 音效+暂停按钮；
+  rhythm 与 candle 无暂停按钮（沿用既有设计）。GameScreen 里三份复制粘贴的暂停按钮和本地
+  MuteButton 定义一并删除。
+- ResultCard：分数改「小标签『得分』+ 大字数字」；五个游戏一行统计、最佳行、四按钮层级
+  （再玩/换游戏/分享卡/回首页）保持；入场动画在 prefers-reduced-motion 下由全局规则禁用（截图 96 验证）。
+
+**发现 / 根因 / 修法**：
+1. 截图脚本点「开始游戏」有竞态：ScriptedSource 的虚拟玩家从 t=0 就在点头（`t % 3000 < 300`），
+   ready 卡片存活不到半秒，点按钮全凭运气（此前接星星/贪吃蛇路由时灵时不灵）。修法：对局态路由
+   一律 WAIT 制——game-star-playing WAIT:5000、game-snake-playing WAIT:6000，与打地鼠/吹蜡烛一致。
+2. 结果卡等待时长不能拍脑袋：接星星第 5 颗漏星在 id 149（sin-hash 确定性 ≈ 112 秒），实测先撞
+   90 秒时间到（112/116 接住、4 漏）——WAIT:125000 时结果卡早已就位；贪吃蛇 90 秒局 WAIT:98000；
+   打地鼠敲满 25 个约 21 秒 + 开局 ≈ 26 秒 WAIT:32000。五张结果卡全部真实打完再截，分数均来自
+   实际对局（3340 / 1400·A / 310 / 740 / 140）。
+3. `--reduced` 是全局开关，第一次批量命令把 91–95 全拍成减动效档。修法：重拍正常档，减动效只留
+   96 一张，误拍的 91–95-reduced 删除。
+
+**验证**：npm test 191/191 ✅（本轮不动游戏逻辑）；npm run build ✅（js 420.23 kB / gzip 127.64 kB，
+比第 5 轮 421.93 略降——HUD 去重生效）；截图 86–97：86–90 五个游戏对局 HUD 1280（小标签 + 分隔线 +
+  对齐按钮一致）、97 吹蜡烛 375 窄屏横排、91–95 五张结果卡 1280 风格一致、96 减动效档结果卡；
+网络 4xx/5xx = 0、console error = 0 ✅。
+
+**提交**：`回填`。
+
 ---
 
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡

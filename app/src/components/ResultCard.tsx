@@ -66,9 +66,12 @@ export default function ResultCard({
         </p>
       ) : null}
       <h2 className="text-3xl font-black">{game === 'rhythm' ? '完成！' : '本局结束'}</h2>
-      <p className="text-5xl font-black tabular-nums text-accent" aria-live="polite">
-        得分 {stats.score}
-      </p>
+      <div className="flex flex-col items-center gap-1">
+        <p className="text-sm font-bold tracking-wider text-dim">得分</p>
+        <p className="text-5xl font-black tabular-nums text-accent" aria-live="polite">
+          {stats.score}
+        </p>
+      </div>
 
       <div className="flex flex-col items-center gap-1 text-lg text-dim">
         {game === 'star' ? (

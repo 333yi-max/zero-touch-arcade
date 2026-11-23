@@ -43,8 +43,18 @@ import { START_LIVES } from '../game/starGame';
 import { BOOST_MS } from '../game/snakeGame';
 import { HOLE_POSITIONS, MAX_MISSES, TARGET_HITS, whackPathPoint } from '../game/whackGame';
 import { CANDLE_COUNT } from '../game/candleGame';
+import {
+  CountdownAnnouncer,
+  HudActions,
+  HudBadge,
+  HudContainer,
+  HudField,
+  HudLives,
+  HudScore,
+  HudStat,
+} from './gameHud';
 import TopBar from './TopBar';
-import { Info, Lightbulb, PlayCircle, Sparkles, Video, Volume2, VolumeX } from 'lucide-react';
+import { Info, Lightbulb, PlayCircle, Sparkles, Video } from 'lucide-react';
 
 interface GameScreenProps {
   gameId: GameId;
@@ -1161,83 +1171,29 @@ function TipsCard({ tips }: { tips: readonly string[] }) {
 
 // ———— HUD 与覆盖层 ————
 
-interface MutedControls {
+interface StarHudBarProps {
+  hud: StarGameHud;
   muted: boolean;
   onMuteToggle: () => void;
-}
-
-function MuteButton({ muted, onMuteToggle }: MutedControls) {
-  return (
-    <button
-      type="button"
-      onClick={onMuteToggle}
-      aria-pressed={muted}
-      className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
-    >
-      <span className="inline-flex items-center gap-2">
-        {muted ? (
-          <VolumeX size={20} aria-hidden="true" />
-        ) : (
-          <Volume2 size={20} aria-hidden="true" />
-        )}
-        音效：{muted ? '关' : '开'}
-      </span>
-    </button>
-  );
-}
-
-interface StarHudBarProps extends MutedControls {
-  hud: StarGameHud;
   onPauseToggle: () => void;
 }
 
 function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
-      <p className="text-2xl font-black tabular-nums">
-        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
-          得分 {hud.score}
-        </span>
-      </p>
-
-      <p
-        role="img"
-        aria-label={`生命值：剩 ${hud.lives} 条，共 ${START_LIVES} 条`}
-        className="flex items-center gap-1.5"
-      >
-        {Array.from({ length: START_LIVES }, (_, i) => (
-          <span
-            key={i}
-            className={`h-4 w-4 rounded-full ${i < hud.lives ? 'bg-accent' : 'bg-edge'}`}
-          />
-        ))}
-      </p>
-
+    <HudContainer>
+      <HudScore score={hud.score} />
+      <HudLives lives={hud.lives} total={START_LIVES} />
       {hud.multiplier > 1 ? (
-        <p
-          aria-live="polite"
-          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
-        >
-          ×{hud.multiplier} · 连击 {hud.combo}
-        </p>
+        <HudBadge live>×{hud.multiplier} · 连击 {hud.combo}</HudBadge>
       ) : null}
-
-      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
-        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
-        <button
-          type="button"
-          onClick={onPauseToggle}
-          aria-label={hud.phase === 'paused' ? '继续游戏' : '暂停游戏'}
-          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
-        >
-          {hud.phase === 'paused' ? '继续' : '暂停'}
-        </button>
-      </div>
-
-      <span className="sr-only" aria-live="polite">
-        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
-      </span>
-    </div>
+      <HudActions
+        muted={muted}
+        onMuteToggle={onMuteToggle}
+        paused={hud.phase === 'paused'}
+        onPauseToggle={onPauseToggle}
+      />
+      <CountdownAnnouncer active={hud.phase === 'countdown'} remaining={hud.countdownRemaining} />
+    </HudContainer>
   );
 }
 
@@ -1247,49 +1203,31 @@ const JUDGE_LABELS: Record<JudgeResult, string> = {
   miss: 'Miss',
 };
 
-interface RhythmHudBarProps extends MutedControls {
+interface RhythmHudBarProps {
   hud: RhythmGameHud;
+  muted: boolean;
+  onMuteToggle: () => void;
   lastJudge: JudgeResult | null;
 }
 
 function RhythmHudBar({ hud, muted, onMuteToggle, lastJudge }: RhythmHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
-      <p className="text-2xl font-black tabular-nums">
-        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
-          得分 {hud.score}
-        </span>
-      </p>
-
-      <p className="text-lg font-bold text-dim">
-        拍子 {hud.judged} / {hud.total}
-      </p>
-
-      {hud.combo > 0 ? (
+    <HudContainer>
+      <HudScore score={hud.score} />
+      <HudStat label="拍子" value={`${hud.judged} / ${hud.total}`} />
+      {hud.combo > 0 ? <HudBadge live>连击 {hud.combo}</HudBadge> : null}
+      <HudField label="判定">
         <p
           aria-live="polite"
-          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
+          aria-label={lastJudge ? `判定 ${JUDGE_LABELS[lastJudge]}` : ''}
+          className={`text-lg font-black ${lastJudge ? '' : 'invisible'}`}
         >
-          连击 {hud.combo}
+          {lastJudge ? JUDGE_LABELS[lastJudge] : '·'}
         </p>
-      ) : null}
-
-      <p
-        aria-live="polite"
-        aria-label={lastJudge ? `判定 ${JUDGE_LABELS[lastJudge]}` : ''}
-        className={`text-lg font-black ${lastJudge ? '' : 'invisible'}`}
-      >
-        {lastJudge ? JUDGE_LABELS[lastJudge] : '·'}
-      </p>
-
-      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
-        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
-      </div>
-
-      <span className="sr-only" aria-live="polite">
-        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
-      </span>
-    </div>
+      </HudField>
+      <HudActions muted={muted} onMuteToggle={onMuteToggle} />
+      <CountdownAnnouncer active={hud.phase === 'countdown'} remaining={hud.countdownRemaining} />
+    </HudContainer>
   );
 }
 
@@ -1298,145 +1236,80 @@ function mmss(totalSec: number): string {
   return `${m}:${String(totalSec % 60).padStart(2, '0')}`;
 }
 
-interface SnakeHudBarProps extends MutedControls {
+interface SnakeHudBarProps {
   hud: SnakeGameHud;
+  muted: boolean;
+  onMuteToggle: () => void;
   onPauseToggle: () => void;
 }
 
 function SnakeHudBar({ hud, muted, onMuteToggle, onPauseToggle }: SnakeHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
-      <p className="text-2xl font-black tabular-nums">
-        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
-          得分 {hud.score}
-        </span>
-      </p>
-
-      <p className="text-lg font-bold tabular-nums text-dim">时间 {mmss(hud.timeLeft)}</p>
-
-      <p className="text-lg font-bold text-dim">长度 {hud.length}</p>
-
+    <HudContainer>
+      <HudScore score={hud.score} />
+      <HudStat label="时间" value={mmss(hud.timeLeft)} live />
+      <HudStat label="长度" value={String(hud.length)} />
       {hud.multiplier > 1 ? (
-        <p
-          aria-live="polite"
-          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
-        >
-          ×{hud.multiplier} · 连击 {hud.combo}
-        </p>
+        <HudBadge live>×{hud.multiplier} · 连击 {hud.combo}</HudBadge>
       ) : null}
-
       {hud.boostActive ? (
-        <p
-          aria-live="polite"
-          className="rounded-full bg-accent-hi px-3 py-1 text-base font-black text-accent-fg"
-        >
+        <HudBadge tone="accent-hi" live>
           闪耀 ×2
-        </p>
+        </HudBadge>
       ) : null}
-
-      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
-        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
-        <button
-          type="button"
-          onClick={onPauseToggle}
-          aria-label={hud.phase === 'paused' ? '继续游戏' : '暂停游戏'}
-          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
-        >
-          {hud.phase === 'paused' ? '继续' : '暂停'}
-        </button>
-      </div>
-
-      <span className="sr-only" aria-live="polite">
-        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
-      </span>
-    </div>
+      <HudActions
+        muted={muted}
+        onMuteToggle={onMuteToggle}
+        paused={hud.phase === 'paused'}
+        onPauseToggle={onPauseToggle}
+      />
+      <CountdownAnnouncer active={hud.phase === 'countdown'} remaining={hud.countdownRemaining} />
+    </HudContainer>
   );
 }
 
-interface WhackHudBarProps extends MutedControls {
+interface WhackHudBarProps {
   hud: WhackGameHud;
+  muted: boolean;
+  onMuteToggle: () => void;
   onPauseToggle: () => void;
 }
 
 function WhackHudBar({ hud, muted, onMuteToggle, onPauseToggle }: WhackHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
-      <p className="text-2xl font-black tabular-nums">
-        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
-          得分 {hud.score}
-        </span>
-      </p>
-
-      <p className="text-lg font-bold tabular-nums text-dim">
-        敲中 {hud.hits} / {TARGET_HITS}
-      </p>
-
-      <p className="text-lg font-bold tabular-nums text-dim">
-        漏 {hud.misses} / {MAX_MISSES}
-      </p>
-
+    <HudContainer>
+      <HudScore score={hud.score} />
+      <HudStat label="敲中" value={`${hud.hits} / ${TARGET_HITS}`} live />
+      <HudStat label="漏" value={`${hud.misses} / ${MAX_MISSES}`} />
       {hud.multiplier > 1 ? (
-        <p
-          aria-live="polite"
-          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
-        >
-          ×{hud.multiplier} · 连击 {hud.combo}
-        </p>
+        <HudBadge live>×{hud.multiplier} · 连击 {hud.combo}</HudBadge>
       ) : null}
-
-      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
-        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
-        <button
-          type="button"
-          onClick={onPauseToggle}
-          aria-label={hud.phase === 'paused' ? '继续游戏' : '暂停游戏'}
-          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
-        >
-          {hud.phase === 'paused' ? '继续' : '暂停'}
-        </button>
-      </div>
-
-      <span className="sr-only" aria-live="polite">
-        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
-      </span>
-    </div>
+      <HudActions
+        muted={muted}
+        onMuteToggle={onMuteToggle}
+        paused={hud.phase === 'paused'}
+        onPauseToggle={onPauseToggle}
+      />
+      <CountdownAnnouncer active={hud.phase === 'countdown'} remaining={hud.countdownRemaining} />
+    </HudContainer>
   );
 }
 
-interface CandleHudBarProps extends MutedControls {
+interface CandleHudBarProps {
   hud: CandleGameHud;
+  muted: boolean;
+  onMuteToggle: () => void;
 }
 
 function CandleHudBar({ hud, muted, onMuteToggle }: CandleHudBarProps) {
   return (
-    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
-      <p className="text-2xl font-black tabular-nums">
-        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
-          得分 {hud.score}
-        </span>
-      </p>
-
-      <p className="text-lg font-bold tabular-nums text-dim">
-        已灭 {hud.extinguished} / {CANDLE_COUNT}
-      </p>
-
-      {hud.chained > 0 ? (
-        <p
-          aria-live="polite"
-          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
-        >
-          连吹 {hud.chained}
-        </p>
-      ) : null}
-
-      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
-        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
-      </div>
-
-      <span className="sr-only" aria-live="polite">
-        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
-      </span>
-    </div>
+    <HudContainer>
+      <HudScore score={hud.score} />
+      <HudStat label="已灭" value={`${hud.extinguished} / ${CANDLE_COUNT}`} live />
+      {hud.chained > 0 ? <HudBadge live>连吹 {hud.chained}</HudBadge> : null}
+      <HudActions muted={muted} onMuteToggle={onMuteToggle} />
+      <CountdownAnnouncer active={hud.phase === 'countdown'} remaining={hud.countdownRemaining} />
+    </HudContainer>
   );
 }
 
