@@ -14,7 +14,7 @@ export const AIM_LERP = 0.07;
 export const AIM_WOBBLE_AMPLITUDE = 0.025;
 export const AIM_WOBBLE_PERIOD_MS = 470;
 /** 高于这个 hash 值的星故意漏掉。 */
-export const AIM_SLIP_THRESHOLD = 0.88;
+export const AIM_SLIP_THRESHOLD = 0.94;
 /** 故意漏掉的偏移量（cursorX 单位）：×332 约 120px，大于 75px 的接住窗口。 */
 export const AIM_SLIP_OFFSET = 0.36;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { demoAimCursor, nearestStar, slipFor } from '../src/game/demoAim';
+import { AIM_SLIP_THRESHOLD, demoAimCursor, nearestStar, slipFor } from '../src/game/demoAim';
 import { createInitialState, step, type StarGameState } from '../src/game/starGame';
 import { GestureEngine } from '../src/input/gestureEngine';
 import { ScriptedSource } from '../src/input/scriptedSource';
@@ -71,7 +71,7 @@ describe('game/demoAim', () => {
 
   it('故意漏掉的星：多帧后偏到接不住的一侧', () => {
     const slippedId = Array.from({ length: 60 }, (_, i) => i + 1).find(
-      (id) => slipFor(id) > 0.88,
+      (id) => slipFor(id) > AIM_SLIP_THRESHOLD,
     );
     expect(slippedId).toBeDefined();
     const state = withStars([{ id: slippedId!, x: 300 }]);
@@ -84,7 +84,7 @@ describe('game/demoAim', () => {
     expect(Math.abs(prev - honest)).toBeGreaterThan(0.25);
   });
 
-  it('整局模拟：虚拟玩家漏 3 颗结束，分数落在 300–600', () => {
+  it('整局模拟：虚拟玩家漏 5 颗结束，分数落在合理区间', () => {
     const engine = new GestureEngine({ mirrorX: 1 });
     let s = step(createInitialState({ rand: seededRand(7) }), { ...IDLE, confirm: true }, 16).state;
     const latch = { confirm: false, pause: false };
@@ -108,7 +108,7 @@ describe('game/demoAim', () => {
 
     expect(s.phase).toBe('over');
     expect(s.overCause).toBe('lives');
-    expect(stats.missed).toBe(3);
+    expect(stats.missed).toBe(5);
     expect(stats.caught).toBeGreaterThan(10);
     expect(stats.score).toBeGreaterThanOrEqual(300);
     expect(stats.score).toBeLessThanOrEqual(600);

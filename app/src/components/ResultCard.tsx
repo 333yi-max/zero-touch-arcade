@@ -47,9 +47,11 @@ export default function ResultCard({
   const accuracy = game === 'rhythm' ? Math.round(stats.accuracy * 100) : null;
 
   return (
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-page">
+      <div className="flex min-h-full items-center justify-center p-5">
     <section
       aria-label="本局结束"
-      className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-card bg-page/95 p-6"
+      className="flex w-full max-w-md flex-col items-center gap-3 rounded-card border-2 border-edge bg-card p-6"
     >
       {rating ? (
         <p className="text-6xl font-black leading-none text-accent" aria-label={`评级 ${rating}`}>
@@ -95,5 +97,7 @@ export default function ResultCard({
         {shareNotice}
       </p>
     </section>
+      </div>
+    </div>
   );
 }

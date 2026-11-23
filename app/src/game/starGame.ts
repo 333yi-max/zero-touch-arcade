@@ -13,15 +13,15 @@ export const PADDLE_EDGE_MARGIN = 8;
 export const STAR_RADIUS = 15;
 /** 星星出生点的横向留白，保证整颗星都在画布内。 */
 export const SPAWN_MARGIN_X = 40;
-export const SPAWN_INTERVAL_MS = 600;
-export const STAR_SPEED_MIN = 120;
-export const STAR_SPEED_MAX = 260;
+export const SPAWN_INTERVAL_MS = 750;
+export const STAR_SPEED_MIN = 110;
+export const STAR_SPEED_MAX = 220;
 export const GOLD_EVERY = 8;
 export const BASE_POINTS = 10;
 export const GOLD_POINTS = 30;
 export const COMBO_PER_MULTIPLIER = 5;
 export const MAX_MULTIPLIER = 3;
-export const START_LIVES = 3;
+export const START_LIVES = 5;
 export const GAME_DURATION_MS = 90_000;
 export const COUNTDOWN_MS = 3_000;
 /** 单步 dt 上限：切后台再回来不该让星星瞬移一屏。 */

@@ -26,6 +26,7 @@ import RhythmGame from './RhythmGame';
 import type { RhythmFx } from './RhythmGame';
 import StarGame from './StarGame';
 import type { GameFx } from './StarGame';
+import { START_LIVES } from '../game/starGame';
 import TopBar from './TopBar';
 
 interface GameScreenProps {
@@ -525,10 +526,10 @@ function StarHudBar({ hud, muted, onMuteToggle, onPauseToggle }: StarHudBarProps
 
       <p
         role="img"
-        aria-label={`生命值：剩 ${hud.lives} 条，共 3 条`}
+        aria-label={`生命值：剩 ${hud.lives} 条，共 ${START_LIVES} 条`}
         className="flex items-center gap-1.5"
       >
-        {[0, 1, 2].map((i) => (
+        {Array.from({ length: START_LIVES }, (_, i) => (
           <span
             key={i}
             className={`h-4 w-4 rounded-full ${i < hud.lives ? 'bg-accent' : 'bg-edge'}`}

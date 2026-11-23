@@ -91,16 +91,16 @@ describe('game/starGame', () => {
     s = withStar(s, 700, 590);
     const r = run(s, IDLE, 100, 3);
     expect(r.events).toContainEqual(
-      expect.objectContaining({ type: 'miss', comboBefore: 6, livesLeft: 2 }),
+      expect.objectContaining({ type: 'miss', comboBefore: 6, livesLeft: 4 }),
     );
     expect(r.state.combo).toBe(0);
     expect(multiplierFor(r.state.combo)).toBe(1);
   });
 
-  it('漏 3 个立即结束，结束事件带统计', () => {
+  it('漏 5 个立即结束，结束事件带统计', () => {
     let s = playingState();
     const gameOver: { cause: string; stats: ReturnType<typeof statsOf> }[] = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       s = withStar(s, 700, 590);
       const r = run(s, IDLE, 100, 3);
       s = r.state;
@@ -110,7 +110,7 @@ describe('game/starGame', () => {
     expect(s.overCause).toBe('lives');
     expect(s.lives).toBe(0);
     expect(gameOver).toHaveLength(1);
-    expect(gameOver[0]).toMatchObject({ cause: 'lives', stats: { missed: 3, caught: 0, total: 3 } });
+    expect(gameOver[0]).toMatchObject({ cause: 'lives', stats: { missed: 5, caught: 0, total: 5 } });
   });
 
   it('90 秒上限：到点以 time 结束（默认时长常量锁 90000ms）', () => {
@@ -124,7 +124,7 @@ describe('game/starGame', () => {
 
   it('每第 8 颗是金星星，接住 +30', () => {
     let s: StarGameState = { ...createInitialState({ rand: seededRand(11) }), phase: 'playing', spawnedCount: 7 };
-    s = run(s, IDLE, 100, 6).state; // 600ms → 生成第 8 颗
+    s = run(s, IDLE, 100, 9).state; // 750ms → 生成第 8 颗
     expect(s.stars).toHaveLength(1);
     expect(s.stars[0].gold).toBe(true);
 
@@ -202,13 +202,13 @@ describe('game/starGame', () => {
     expect(r.state.paddleX).toBe(234);
   });
 
-  it('生成节奏：600ms 一颗，速度落在 120–260', () => {
+  it('生成节奏：750ms 一颗，速度落在 110–220', () => {
     const s = playingState();
-    const r = run(s, IDLE, 100, 12);
+    const r = run(s, IDLE, 100, 16);
     expect(r.state.stars).toHaveLength(2);
     for (const star of r.state.stars) {
-      expect(star.vy).toBeGreaterThanOrEqual(120);
-      expect(star.vy).toBeLessThanOrEqual(260);
+      expect(star.vy).toBeGreaterThanOrEqual(110);
+      expect(star.vy).toBeLessThanOrEqual(220);
       expect(star.x).toBeGreaterThanOrEqual(40);
       expect(star.x).toBeLessThanOrEqual(760);
     }
@@ -218,7 +218,7 @@ describe('game/starGame', () => {
     const high = withStar(playingState(), 700, STAR_RADIUS + 1);
     const r = run(high, IDLE, 100, 3); // 只掉了 60px，远没到底
     expect(r.state.missed).toBe(0);
-    expect(r.state.lives).toBe(3);
+    expect(r.state.lives).toBe(5);
     // 贴近底部的星星两步内掉穿；期间新生成的星星才掉 20px，不会干扰
     const low = withStar(playingState(), 700, 596);
     const r2 = run(low, IDLE, 100, 2);
