@@ -1,0 +1,24 @@
+{
+  "when": "2026-11-23T16:42:10.290Z",
+  "demo": {
+    "hasTitle": true,
+    "scoreText": null,
+    "phaseText": true,
+    "canvasCount": 1
+  },
+  "viewport375": {
+    "vw": 375,
+    "scrollW": 375
+  },
+  "camera": {
+    "title": true,
+    "hasReadyHint": true,
+    "canvasCount": 2,
+    "videoCount": 1
+  },
+  "badResponses": [],
+  "consoleErrors": [
+    "INFO: Created TensorFlow Lite XNNPACK delegate for CPU.",
+    "INFO: Created TensorFlow Lite XNNPACK delegate for CPU."
+  ]
+}

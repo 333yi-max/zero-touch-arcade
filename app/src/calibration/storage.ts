@@ -109,8 +109,13 @@ export function parseStoredSettings(raw: string | null | undefined): StoredSetti
   return typeof voice === 'boolean' ? { voice } : null;
 }
 
-export function serializeStoredSettings(s: StoredSettings): string {
-  return JSON.stringify(s);
+export function serializeStoredSettings(
+  s: StoredSettings,
+  base: Record<string, unknown> = {},
+): string {
+  // 同一条记录里还住着游戏音效开关（playerPrefs 写的 muted）。这里只覆盖 voice，
+  // 其余字段原样保留 —— 否则在校准页切一次语音，游戏页的静音设置就被冲掉。
+  return JSON.stringify({ ...base, voice: s.voice });
 }
 
 // ———— 下面是这个模块唯一碰 DOM 的一层 ————
@@ -166,5 +171,17 @@ export function readStoredSettings(): StoredSettings {
 }
 
 export function writeStoredSettings(s: StoredSettings): boolean {
-  return setItem(SETTINGS_KEY, serializeStoredSettings(s));
+  let base: Record<string, unknown> = {};
+  const raw = getItem(SETTINGS_KEY);
+  if (typeof raw === 'string' && raw.length > 0) {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        base = parsed as Record<string, unknown>;
+      }
+    } catch {
+      base = {};
+    }
+  }
+  return setItem(SETTINGS_KEY, serializeStoredSettings(s, base));
 }

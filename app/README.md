@@ -55,7 +55,8 @@ npm run preview    # 本地预览构建产物
 - `CalibrationScreen` — 4 步采样 + 眨眼确认，见下节
 - `GameScreen` — 游戏 1「接星星」：`mode='demo'` 走 `ScriptedSource` + 辅助瞄准；`mode='camera'` 走 `CameraSource`，挡板跟真实 `cursorX`。结束页是游戏内的覆盖层（结束后确认手势还要能触发「再玩一次」，所以不切成独立页面），`ResultScreen` 已删
 
-测试 91 条：`GestureEngine` 17 + sequencer 14 + `starGame` 14 + storage 9 + `landmarksToFrame` 9 + machine 9 + sampling 7 + `demoAim` 7 + `buildCsv` 5。
+测试 92 条：`GestureEngine` 17 + sequencer 14 + `starGame` 14 + storage 10 + `landmarksToFrame` 9 + machine 9 + sampling 7 + `demoAim` 7 + `buildCsv` 5。
+摄像头模式的预览压成 320px 小窗、游戏画布 `max-h-[38vh]`，一屏能看到挡板；准备状态有「开始游戏」覆盖层（点头/眨眼/点按钮都能开局）。
 输入侧是 `GestureEngine` + `landmarksToFrame` + `ScriptedSource` + `CameraSource`（FaceLandmarker 468 点 + blendshape，GPU 委托请求失败自动回退 CPU，切后台释放摄像头轨道）。
 
 自然眨眼已实测：弱侧峰值只有 0.47~0.55，0.55 的阈值过不了，已降到 0.38；确认动作定为**点头为主、眨眼为辅**。调试面板的峰值保持和 CSV 导出就是为这类核对准备的。

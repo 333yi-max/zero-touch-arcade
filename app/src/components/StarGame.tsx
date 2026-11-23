@@ -26,9 +26,11 @@ interface StarGameProps {
   fxRef: RefObject<GameFx>;
   /** 结束页等覆盖层，由调用方决定何时显示。 */
   overlay?: ReactNode;
+  /** 摄像头模式下要和预览挤同一屏，画布得矮一点。 */
+  frameClass?: string;
 }
 
-export default function StarGame({ gameRef, paused, fxRef, overlay }: StarGameProps) {
+export default function StarGame({ gameRef, paused, fxRef, overlay, frameClass }: StarGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reducedRef = useRef(false);
 
@@ -80,7 +82,7 @@ export default function StarGame({ gameRef, paused, fxRef, overlay }: StarGamePr
   }, [gameRef, fxRef]);
 
   return (
-    <div className="relative mx-auto aspect-[4/3] max-h-[60vh] w-full">
+    <div className={`relative mx-auto aspect-[4/3] w-full ${frameClass ?? 'max-h-[60vh]'}`}>
       <canvas
         ref={canvasRef}
         role="img"

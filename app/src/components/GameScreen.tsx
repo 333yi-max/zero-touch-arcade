@@ -129,6 +129,15 @@ export default function GameScreen({ mode, calibration, onBack, onDemo }: GameSc
   const trace = useDebugTrace(frame, state.cursorX, events);
   const gamePaused = hud.phase === 'paused';
 
+  // 准备中要明确告诉用户「怎么开始」：点头/眨眼，或点按钮（陪护者也能点）。
+  // 结束后复用同一层显示结算卡。
+  const overlayNode =
+    hud.phase === 'over' && hud.overCause ? (
+      <EndCard stats={hud.stats} cause={hud.overCause} onReplay={replay} onHome={onBack} />
+    ) : hud.phase === 'ready' ? (
+      <ReadyCard onStart={() => (latch.confirm = true)} />
+    ) : null;
+
   const toggleMuted = (): void => {
     const next = !muted;
     setMuted(next);
@@ -222,44 +231,30 @@ export default function GameScreen({ mode, calibration, onBack, onDemo }: GameSc
           gameRef={gameRef}
           paused={gamePaused}
           fxRef={fxRef}
-          overlay={
-            hud.phase === 'over' && hud.overCause ? (
-              <EndCard
-                stats={hud.stats}
-                cause={hud.overCause}
-                onReplay={replay}
-                onHome={onBack}
-              />
-            ) : null
-          }
+          overlay={overlayNode}
         />
       ) : problem ? (
         <CameraProblemCard message={problem} onDemo={onDemo} />
       ) : (
         <>
-          <CameraStage
-            videoRef={videoRef}
-            source={cameraSource}
-            mirrored={mirrorX === -1}
-            overlay={overlay}
-            paused={gamePaused}
-            frame={frame}
-            onDemo={onDemo}
-          />
+          {/* 预览压成小窗：4:3 全宽会把下面的游戏画布整个挤出屏幕 */}
+          <div className="mx-auto w-full max-w-xs">
+            <CameraStage
+              videoRef={videoRef}
+              source={cameraSource}
+              mirrored={mirrorX === -1}
+              overlay={overlay}
+              paused={gamePaused}
+              frame={frame}
+              onDemo={onDemo}
+            />
+          </div>
           <StarGame
             gameRef={gameRef}
             paused={gamePaused}
             fxRef={fxRef}
-            overlay={
-              hud.phase === 'over' && hud.overCause ? (
-                <EndCard
-                  stats={hud.stats}
-                  cause={hud.overCause}
-                  onReplay={replay}
-                  onHome={onBack}
-                />
-              ) : null
-            }
+            overlay={overlayNode}
+            frameClass="max-h-[38vh]"
           />
         </>
       )}
@@ -357,6 +352,18 @@ interface EndCardProps {
   cause: GameOverCause;
   onReplay: () => void;
   onHome: () => void;
+}
+
+function ReadyCard({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-card bg-page/85 p-6 text-center">
+      <p className="text-3xl font-black">准备好了吗？</p>
+      <p className="text-lg text-dim">点点头、眨眨眼，或点下面的按钮开始</p>
+      <Button onClick={onStart} hint="点头、眨眼、张嘴都不方便时，可以点这里">
+        开始游戏
+      </Button>
+    </div>
+  );
 }
 
 function EndCard({ stats, cause, onReplay, onHome }: EndCardProps) {

@@ -133,6 +133,15 @@ describe('calibration/storage', () => {
     );
   });
 
+  it('校准页改语音时不冲掉游戏页的音效静音', () => {
+    const { items, api } = memoryStore();
+    withStorage(api, () => {
+      items.set(SETTINGS_KEY, '{"voice":true,"muted":true}');
+      expect(writeStoredSettings({ voice: false })).toBe(true);
+      expect(JSON.parse(items.get(SETTINGS_KEY) ?? '{}')).toEqual({ voice: false, muted: true });
+    });
+  });
+
   it('parseStoredSettings 只认布尔 voice', () => {
     expect(parseStoredSettings('{"voice":"yes"}')).toBeNull();
     expect(parseStoredSettings('{"voice":true}')).toEqual({ voice: true });
