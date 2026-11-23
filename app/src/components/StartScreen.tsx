@@ -147,7 +147,7 @@ export default function StartScreen({
           <JudgeItem
             icon={BadgeCheck}
             title="证据"
-            text={`${TEST_COUNT} 条自动化测试 · ${GAMES.length} 个游戏 · 0 对外请求 · 0 次上传。`}
+            text={`${TEST_COUNT} 条自动化测试 · ${GAMES.length} 个游戏 · ${externalRequests} 个对外请求 · 0 次上传。`}
           />
         </div>
       </section>

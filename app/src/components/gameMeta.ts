@@ -15,7 +15,7 @@ export const GAMES: readonly GameMeta[] = [
     id: 'star',
     name: '接星星',
     line: '转头移动挡板，接住落下的星星',
-    time: '漏 5 颗星结束',
+    time: '漏 5 颗星或 90 秒结束',
     who: '第一次玩首选',
     icon: Star,
   },
