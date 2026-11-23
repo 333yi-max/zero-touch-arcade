@@ -7,7 +7,7 @@ import { GAMES } from './gameMeta';
 import Button from './Button';
 import TopBar from './TopBar';
 
-const ANNOUNCE = `三个游戏。${GAMES.map((g) => `${g.name}，${g.line}`).join('。')}。点卡片上的开始按钮选一个。`;
+const ANNOUNCE = `四个游戏。${GAMES.map((g) => `${g.name}，${g.line}`).join('。')}。点卡片上的开始按钮选一个。`;
 
 interface SelectScreenProps {
   onPick: (game: GameId) => void;
@@ -74,7 +74,7 @@ export default function SelectScreen({ onPick, onBack }: SelectScreenProps) {
       </div>
 
       <div className="animate-fade-in-up stagger-3 flex flex-wrap gap-4">
-        <Button variant="secondary" onClick={announce} hint="把三个游戏再念一遍">
+        <Button variant="secondary" onClick={announce} hint="把四个游戏再念一遍">
           再念一遍
         </Button>
         <Button variant="secondary" onClick={onBack}>

@@ -8,6 +8,8 @@ import { useStarGame } from '../hooks/useStarGame';
 import type { StarGameHud } from '../hooks/useStarGame';
 import { useSnakeGame } from '../hooks/useSnakeGame';
 import type { SnakeGameHud } from '../hooks/useSnakeGame';
+import { useWhackGame } from '../hooks/useWhackGame';
+import type { WhackGameHud } from '../hooks/useWhackGame';
 import { CameraSource } from '../input/cameraSource';
 import type { Calibration, GestureEvent, InputState, RawFrame } from '../input/types';
 import { ScriptedSource } from '../input/scriptedSource';
@@ -31,8 +33,11 @@ import StarGame from './StarGame';
 import type { GameFx } from './StarGame';
 import SnakeGame from './SnakeGame';
 import type { SnakeFx } from './SnakeGame';
+import WhackGame from './WhackGame';
+import type { WhackFx } from './WhackGame';
 import { START_LIVES } from '../game/starGame';
 import { BOOST_MS } from '../game/snakeGame';
+import { HOLE_POSITIONS, MAX_MISSES, TARGET_HITS, whackPathPoint } from '../game/whackGame';
 import TopBar from './TopBar';
 import { Info, Lightbulb, PlayCircle, Sparkles, Video, Volume2, VolumeX } from 'lucide-react';
 
@@ -124,7 +129,15 @@ export default function GameScreen({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <TopBar
-        title={gameId === 'star' ? '接星星' : gameId === 'rhythm' ? '节奏点头' : '霓虹贪吃蛇'}
+        title={
+          gameId === 'star'
+            ? '接星星'
+            : gameId === 'rhythm'
+              ? '节奏点头'
+              : gameId === 'snake'
+                ? '霓虹贪吃蛇'
+                : '打地鼠'
+        }
         onBack={onBack}
         right={
           <span className="card-surface inline-flex items-center gap-2 rounded-full border-2 border-edge px-4 py-2 text-base font-bold text-dim">
@@ -159,6 +172,16 @@ export default function GameScreen({
         />
       ) : gameId === 'rhythm' ? (
         <RhythmSession
+          mode={mode}
+          gestureState={state}
+          gestureEvents={events}
+          frame={frame}
+          camera={camera}
+          onBack={onBack}
+          onSwitchGame={onSwitchGame}
+        />
+      ) : gameId === 'whack' ? (
+        <WhackSession
           mode={mode}
           gestureState={state}
           gestureEvents={events}
@@ -203,7 +226,7 @@ export default function GameScreen({
   );
 }
 
-// ———— 三个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
+// ———— 四个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
 
 interface SessionProps {
   mode: Mode;
@@ -725,8 +748,188 @@ function SnakeSession({
   );
 }
 
-// ———— 会话布局外壳：xl 两栏（左画布 / 右 HUD+预览+提示），窄屏上下堆叠 ————
+function WhackSession({
+  mode,
+  gestureState,
+  gestureEvents,
+  frame,
+  camera,
+  onBack,
+  onSwitchGame,
+}: SessionProps) {
+  // 演示模式的虚拟玩家整体接管输入（瞄准+点头）；摄像头模式走真实手势
+  const { gameRef, latchRef, hud, events: gameEvents, replay } = useWhackGame({
+    demo: mode === 'demo',
+    replayOnConfirm: mode === 'camera',
+  });
 
+  const soundsRef = useRef<GameSounds | null>(null);
+  const speakerRef = useRef<GameSpeaker | null>(null);
+  const fxRef = useRef<WhackFx>({
+    hitUntil: 0,
+    hitAt: null,
+    hitGold: false,
+    whiffUntil: 0,
+    whiffAt: null,
+    retreatUntil: 0,
+    retreatAt: null,
+    shakeUntil: 0,
+    shakePower: 0,
+    texts: [],
+  });
+  const prevPhaseRef = useRef<WhackGameHud['phase']>('ready');
+  const [muted, setMuted] = useState<boolean>(() => readMuted());
+
+  useEffect(() => {
+    const sounds = createGameSounds();
+    const speaker = createGameSpeaker();
+    sounds.setMuted(readMuted());
+    soundsRef.current = sounds;
+    speakerRef.current = speaker;
+    return () => {
+      soundsRef.current = null;
+      speakerRef.current = null;
+      sounds.dispose();
+    };
+  }, []);
+
+  // 手势脉冲锁存：点头/张嘴只持续一帧，渲染间隔之间出现也不丢
+  const latch = latchRef.current;
+  latch.cursorX = gestureState.cursorX;
+  if (gestureState.confirm || gestureEvents.includes('confirm')) latch.confirm = true;
+  if (gestureState.pause || gestureEvents.includes('pause')) latch.pause = true;
+
+  // 事件 → 声音 + 视觉特效：每个音效都有画面替身，听障用户不靠声音
+  useEffect(() => {
+    if (gameEvents.length === 0) return;
+    const sounds = soundsRef.current;
+    const fx = fxRef.current;
+    const now = performance.now();
+    for (const e of gameEvents) {
+      switch (e.type) {
+        case 'hit': {
+          sounds?.whackHitSound(e.gold, e.multiplier);
+          const [x, y] = HOLE_POSITIONS[e.hole];
+          fx.hitUntil = now + 300;
+          fx.hitAt = { x, y: y - 30 };
+          fx.hitGold = e.gold;
+          fx.texts = [
+            ...fx.texts.slice(-5),
+            {
+              x,
+              y: y - 58,
+              text: e.multiplier > 1 ? `+${e.points} ×${e.multiplier}` : `+${e.points}`,
+              color: e.gold ? '#ffe566' : '#ffd60a',
+              until: now + 900,
+            },
+          ];
+          if (e.gold) {
+            fx.shakeUntil = now + 220;
+            fx.shakePower = 0.35;
+          }
+          break;
+        }
+        case 'whiff': {
+          // 敲空没有声音，只有红叉 —— 刻意安静，不吓人
+          const { x, y } = whackPathPoint(((gameRef.current?.cursorX ?? 0) + 1) / 2);
+          fx.whiffUntil = now + 320;
+          fx.whiffAt = { x, y };
+          break;
+        }
+        case 'retreat': {
+          sounds?.whackRetreatSound();
+          const [x, y] = HOLE_POSITIONS[e.hole];
+          fx.retreatUntil = now + 320;
+          fx.retreatAt = { x, y };
+          break;
+        }
+        case 'countdown':
+          if (e.remaining === 3) sounds?.startSound();
+          break;
+        case 'gameOver':
+          sounds?.endSound();
+          break;
+      }
+    }
+  }, [gameEvents]);
+
+  // 语音只报相位切换，不逐帧叫
+  useEffect(() => {
+    const speaker = speakerRef.current;
+    if (!speaker) return;
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = hud.phase;
+    if (hud.phase === prev) return;
+    if (hud.phase === 'countdown') speaker.whackCountdown();
+    else if (hud.phase === 'paused') speaker.paused();
+    else if (hud.phase === 'playing' && prev === 'paused') speaker.resumed();
+    else if (hud.phase === 'over') speaker.whackGameOver(hud.score);
+  }, [hud.phase, hud.score]);
+
+  // 游戏中 confirm 就是敲击，音效由 hit/whiff 事件给；只在开始前/结束后给反馈
+  useEffect(() => {
+    if (gestureEvents.includes('confirm') && (hud.phase === 'ready' || hud.phase === 'over')) {
+      soundsRef.current?.confirmSound(frame);
+    }
+  }, [gestureEvents, frame, hud.phase]);
+
+  // 光标跟随音：越靠边音量越高；暂停/结束/摄像头不可用时静音
+  const trackingActive = hud.phase !== 'paused' && hud.phase !== 'over';
+  useEffect(() => {
+    soundsRef.current?.setTracking(gestureState.cursorX, trackingActive);
+  }, [gestureState.cursorX, trackingActive]);
+
+  const toggleMuted = (): void => {
+    const next = !muted;
+    setMuted(next);
+    writeMuted(next);
+    soundsRef.current?.setMuted(next);
+  };
+
+  const gamePaused = hud.phase === 'paused';
+
+  const overlayNode =
+    hud.phase === 'over' ? (
+      <ResultCard
+        result={{ game: 'whack', stats: hud.stats }}
+        onReplay={replay}
+        onSwitchGame={onSwitchGame}
+        onHome={onBack}
+      />
+    ) : hud.phase === 'ready' ? (
+      <ReadyCard onStart={() => (latch.confirm = true)} />
+    ) : null;
+
+  return (
+    <SessionLayout
+      showCamera={mode === 'camera'}
+      camera={camera}
+      cameraPaused={gamePaused}
+      frame={frame}
+      hud={
+        <WhackHudBar
+          hud={hud}
+          muted={muted}
+          onMuteToggle={toggleMuted}
+          onPauseToggle={() => (latchRef.current.pause = true)}
+        />
+      }
+      tips={GAME_TIPS.whack}
+    >
+      <WhackGame
+        gameRef={gameRef}
+        paused={gamePaused}
+        fxRef={fxRef}
+        overlay={overlayNode}
+        frameClass={
+          mode === 'camera' ? 'max-h-[36vh] xl:max-h-[80vh]' : 'max-h-[60vh] xl:max-h-[80vh]'
+        }
+      />
+    </SessionLayout>
+  );
+}
+
+// ———— 会话布局外壳：xl 两栏（左画布 / 右 HUD+预览+提示），窄屏上下堆叠 ————
 interface SessionLayoutProps {
   showCamera: boolean;
   camera: SessionProps['camera'];
@@ -770,10 +973,11 @@ function SessionLayout({
   );
 }
 
-const GAME_TIPS: Record<'star' | 'rhythm' | 'snake', readonly string[]> = {
+const GAME_TIPS: Record<'star' | 'rhythm' | 'snake' | 'whack', readonly string[]> = {
   star: ['转头左右移动挡板', '金色星星分值更高', '点头开始，张嘴暂停'],
   rhythm: ['看收缩环，环与目标圈重合时点头', '连击只数 Perfect，Good / Miss 都清零'],
   snake: ['转头控制方向，小蛇不会停', '连续吃光球叠连击倍率', '点头开启闪耀，双倍得分', '张嘴暂停'],
+  whack: ['转头沿蛇形路径移动准星', '对准冒头的地鼠点头敲下', '金色地鼠分值更高', '敲空断连击，地鼠缩回算漏', '张嘴暂停'],
 };
 
 function TipsCard({ tips }: { tips: readonly string[] }) {
@@ -989,8 +1193,57 @@ function SnakeHudBar({ hud, muted, onMuteToggle, onPauseToggle }: SnakeHudBarPro
   );
 }
 
-function ReadyCard({ onStart }: { onStart: () => void }) {
+interface WhackHudBarProps extends MutedControls {
+  hud: WhackGameHud;
+  onPauseToggle: () => void;
+}
+
+function WhackHudBar({ hud, muted, onMuteToggle, onPauseToggle }: WhackHudBarProps) {
   return (
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
+      <p className="text-2xl font-black tabular-nums">
+        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
+          得分 {hud.score}
+        </span>
+      </p>
+
+      <p className="text-lg font-bold tabular-nums text-dim">
+        敲中 {hud.hits} / {TARGET_HITS}
+      </p>
+
+      <p className="text-lg font-bold tabular-nums text-dim">
+        漏 {hud.misses} / {MAX_MISSES}
+      </p>
+
+      {hud.multiplier > 1 ? (
+        <p
+          aria-live="polite"
+          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
+        >
+          ×{hud.multiplier} · 连击 {hud.combo}
+        </p>
+      ) : null}
+
+      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
+        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
+        <button
+          type="button"
+          onClick={onPauseToggle}
+          aria-label={hud.phase === 'paused' ? '继续游戏' : '暂停游戏'}
+          className="min-h-16 rounded-card border-2 border-edge bg-page px-5 text-lg font-bold text-fg transition duration-200 ease-out-soft hover:border-accent"
+        >
+          {hud.phase === 'paused' ? '继续' : '暂停'}
+        </button>
+      </div>
+
+      <span className="sr-only" aria-live="polite">
+        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
+      </span>
+    </div>
+  );
+}
+
+function ReadyCard({ onStart }: { onStart: () => void }) {  return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-card bg-page/85 p-6 text-center backdrop-blur-sm">
       <p className="flex items-center gap-2 text-3xl font-black">
         <Sparkles size={28} aria-hidden="true" className="text-accent" />

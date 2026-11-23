@@ -24,6 +24,8 @@ export interface GameSounds {
   eatSound(gold: boolean, multiplier: number): void;
   selfHitSound(): void;
   boostSound(): void;
+  whackHitSound(gold: boolean, multiplier: number): void;
+  whackRetreatSound(): void;
   setTracking(cursorX: number, active: boolean): void;
   setMuted(muted: boolean): void;
   dispose(): void;
@@ -165,6 +167,22 @@ export function createGameSounds(): GameSounds {
       tone(659, 0.1, 0.16, { type: 'triangle' });
       tone(988, 0.1, 0.16, { type: 'triangle', when: 0.08 });
       tone(1319, 0.16, 0.16, { type: 'triangle', when: 0.16 });
+    },
+    whackHitSound(gold: boolean, multiplier: number): void {
+      // 短促「咚」：普通鼠两连、金鼠三连上行，连击越高音越高
+      const k = 1 + 0.04 * multiplier;
+      if (gold) {
+        tone(784 * k, 0.08, 0.16, { type: 'triangle' });
+        tone(988 * k, 0.08, 0.14, { type: 'triangle', when: 0.05 });
+        tone(1319 * k, 0.1, 0.12, { type: 'triangle', when: 0.1 });
+      } else {
+        tone(660 * k, 0.07, 0.14, { type: 'triangle' });
+        tone(880 * k, 0.08, 0.12, { type: 'triangle', when: 0.04 });
+      }
+    },
+    whackRetreatSound(): void {
+      // 缩回：轻轻下滑一下，和漏星的沉重感区分开
+      tone(300, 0.09, 0.07, { slideTo: 220, type: 'sine' });
     },
     setTracking(cursorX: number, active: boolean): void {
       const magnitude = Math.min(1, Math.abs(cursorX));

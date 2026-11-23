@@ -31,8 +31,11 @@ const ROUTES = {
   'game-star': [['演示模式'], ['接星星']],
   'game-rhythm': [['演示模式'], ['节奏点头']],
   'game-snake': [['演示模式'], ['霓虹贪吃蛇']],
+  'game-whack': [['演示模式'], ['打地鼠']],
   'game-star-playing': [['演示模式'], ['接星星'], ['开始游戏']],
   'game-snake-playing': [['演示模式'], ['霓虹贪吃蛇'], ['开始游戏']],
+  // 打地鼠演示玩家会自己点头开局，等它打完倒计时进入对局再拍
+  'game-whack-playing': [['演示模式'], ['打地鼠'], ['WAIT:6500']],
 };
 
 function specsFromArgs(argv) {
@@ -99,7 +102,13 @@ async function main() {
     const [w, h] = size.split('x').map(Number);
     await page.setViewport({ width: w, height: h });
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    for (const [text] of ROUTES[route]) await clickByText(page, text);
+    for (const [text] of ROUTES[route]) {
+      if (text.startsWith('WAIT:')) {
+        await new Promise((r) => setTimeout(r, Number(text.slice(5))));
+        continue;
+      }
+      await clickByText(page, text);
+    }
     try {
       await page.waitForNetworkIdle({ idleTime: 400, timeout: 8000 });
     } catch {

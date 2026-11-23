@@ -11,9 +11,10 @@ export interface BestScores {
   star: number | null;
   rhythm: number | null;
   snake: number | null;
+  whack: number | null;
 }
 
-export const EMPTY_BEST: BestScores = { star: null, rhythm: null, snake: null };
+export const EMPTY_BEST: BestScores = { star: null, rhythm: null, snake: null, whack: null };
 
 function readScore(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
@@ -31,6 +32,8 @@ export function parseBestScores(raw: string | null): BestScores {
       star: readScore(rec.star),
       rhythm: readScore(rec.rhythm),
       snake: readScore(rec.snake),
+      // 旧存档没有 whack 字段 → null，兼容
+      whack: readScore(rec.whack),
     };
   } catch {
     return EMPTY_BEST;

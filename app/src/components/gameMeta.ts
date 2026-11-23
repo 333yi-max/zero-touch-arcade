@@ -1,4 +1,4 @@
-import { AudioLines, Star, Worm, type LucideIcon } from 'lucide-react';
+import { AudioLines, Hammer, Star, Worm, type LucideIcon } from 'lucide-react';
 import type { GameId } from '../state/machine';
 
 export interface GameMeta {
@@ -34,5 +34,13 @@ export const GAMES: readonly GameMeta[] = [
     time: '90 秒一局',
     who: '想挑战反应力',
     icon: Worm,
+  },
+  {
+    id: 'whack',
+    name: '打地鼠',
+    line: '转头移动准星，点头敲地鼠',
+    time: '60 秒或敲中 25 个',
+    who: '喜欢眼疾手快',
+    icon: Hammer,
   },
 ];

@@ -72,6 +72,41 @@ reduced-motion 首页）：数据卡 148 / 3 / 0 / 0 与真实一致，评委块
 
 **提交**：`d4ce51f`。
 
+### 第 4 轮 · 游戏 4「打地鼠」
+
+**改了什么**：
+- 新纯逻辑 `src/game/whackGame.ts`：3×3 九洞，一维准星沿「蛇形路径」滑动（`whackPathPoint` 线性插值、
+  `holeIndexForCursor` 就近取整、`cursorForHole` 往返映射，全部纯函数）；60 秒或敲中 25 个结束，漏 8 个结束；
+  地鼠 0.8–1.4 秒随机出现、金色每 10 只出现一次；敲中 +10×倍率（连击每 5 个 +1，封顶 ×3），金鼠 +30×倍率；
+  敲空断连击但不扣漏数，缩回才计漏；暂停语义与接星星一致（张嘴/点头暂停，恢复的 confirm 不敲地鼠）；
+  单步 dt 钳位 100ms、随机数注入、`moles` 整层浅拷贝隔离帧间状态。
+- 新演示 AI `src/game/demoWhack.ts`：整体接管输入（瞄准+点头，不依赖 ScriptedSource 的 3 秒点头节奏）——
+  朝路径距离最近的可见地鼠按 0.18 速率滑去，到位后按 350ms 节拍点头；ready 相位延迟 1.5 秒自己开局
+  （让「准备好了吗」卡片先露脸）。手算验证过命中上界 < 地鼠寿命下界，整局必以「敲满 25 个」结束。
+- 新 hook `src/hooks/useWhackGame.ts`（demo 标志整体切换输入源）+ 画布渲染 `src/components/WhackGame.tsx`
+  （蛇形路径虚线、洞口椭圆、地鼠弹出缓动/缩回、准星光环随连击增亮、敲中爆发粒子、敲空红叉、缩回红圈、
+  金鼠四芒旋转，reduced-motion 全静态）。
+- 全站集成：machine GameId 加 'whack'；bestScores 加可选字段 `whack`（旧存档缺失按 null 兼容）；
+  shareCard GAME_NAMES；sound 加敲击音（金鼠三连上行）/缩回音；gameSpeech 加 whackCountdown/whackGameOver；
+  SelectScreen 第四张卡；GameScreen WhackSession + WhackHudBar（敲中/漏计数）；ResultCard 统计行
+  （敲中/漏/最高连击）；shots.mjs 加 game-whack 路由与 `WAIT:毫秒` 延时指令。
+
+**发现 / 根因 / 修法**：
+1. `WhackGameState` 起初没有 cursorX——渲染器要画准星但状态里没有。修法：像接星星的 paddleX 一样，
+   step 每帧把 input.cursorX 抄进状态，渲染器只读状态；补「准星跟手」单测锁死。
+2. 演示 AI 首帧就点头，ready 卡片一闪而过、截图脚本点不到「开始游戏」按钮。根因：记忆脉冲时间戳
+   初始 -1e9（纯函数测试用）。修法：hook 里用挂载时刻 `performance.now()` 初始化记忆 + ready 相位
+   停顿 1.5 秒；shots.mjs 支持 `WAIT:6500` 延时等倒计时走完再拍对局。
+3. 设计决策（拍板记录）：敲空没声音只有红叉——安静，不吓人；连击只在敲空时断，别的洞缩回不断；
+   pause 沿用张嘴，和接星星/贪吃蛇一致（吹蜡烛才是「无暂停」的例外，下一轮）。
+
+**验证**：npm test 173/173 ✅（新增 whackGame 20 条 + demoWhack 4 条 + bestScores 补 1 条，148→173）；
+npm run build ✅（js 410.49 kB / gzip 125.40 kB，css 31.43 kB / 6.79 kB）；截图 71–77：71/72 打地鼠
+1280 ready 与对局（演示 AI 已在敲，得分 30/敲中 3）、73/74 同档 375 无溢出、75 reduced-motion 档、
+76/77 选游戏页四卡 1280/375；网络 4xx/5xx = 0、console error = 0 ✅。
+
+**提交**：`<hash>`。
+
 ---
 
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡

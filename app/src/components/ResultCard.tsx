@@ -5,13 +5,15 @@ import type { RhythmGameStats } from '../game/rhythmGame';
 import { downloadShareCard } from '../game/shareCard';
 import type { SnakeGameStats } from '../game/snakeGame';
 import type { StarGameStats } from '../game/starGame';
+import type { WhackGameStats } from '../game/whackGame';
 import Button from './Button';
 
-/** 三个游戏共用的结果数据：按 game 判别 stats 的字段。 */
+/** 四个游戏共用的结果数据：按 game 判别 stats 的字段。 */
 export type GameResult =
   | { game: 'star'; stats: StarGameStats }
   | { game: 'rhythm'; stats: RhythmGameStats }
-  | { game: 'snake'; stats: SnakeGameStats };
+  | { game: 'snake'; stats: SnakeGameStats }
+  | { game: 'whack'; stats: WhackGameStats };
 
 interface ResultCardProps {
   result: GameResult;
@@ -74,6 +76,10 @@ export default function ResultCard({
         ) : game === 'rhythm' ? (
           <p>
             准确率 {accuracy}% · 完美连击 {stats.maxCombo}
+          </p>
+        ) : game === 'whack' ? (
+          <p>
+            敲中 {stats.hits} / 25 · 漏 {stats.misses} · 最高连击 {stats.maxCombo}
           </p>
         ) : (
           <p>
