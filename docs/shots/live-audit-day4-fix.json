@@ -1,0 +1,61 @@
+{
+  "site": "https://zero-touch-arcade-isyzlt2g2ce.qoder.zone",
+  "capturedAt": "2026-11-23T14:26:47.585Z",
+  "assets": [
+    {
+      "url": "/assets/index-CalvxPHL.css",
+      "status": 200
+    },
+    {
+      "url": "/assets/index-BJABjniB.js",
+      "status": 200
+    },
+    {
+      "url": "/wasm/vision_wasm_internal.js",
+      "status": 200
+    },
+    {
+      "url": "/wasm/vision_wasm_internal.wasm",
+      "status": 200
+    },
+    {
+      "url": "/models/face_landmarker.task",
+      "status": 200
+    },
+    {
+      "url": "/wasm/vision_wasm_internal.js",
+      "status": 304
+    },
+    {
+      "url": "/wasm/vision_wasm_internal.wasm",
+      "status": 200
+    },
+    {
+      "url": "/models/face_landmarker.task",
+      "status": 200
+    }
+  ],
+  "firstScreen": {
+    "dcl": 1401,
+    "load": 1417,
+    "ttfb": 1002
+  },
+  "flowA": {
+    "started": true,
+    "hasRenshou": true,
+    "hasShoushi": false
+  },
+  "flowB": {
+    "calibrationCard": true,
+    "gameCard": true,
+    "card": true,
+    "loadingLeft": false
+  },
+  "viewport375": {
+    "vw": 375,
+    "scrollW": 375
+  },
+  "badResponses": [],
+  "totalRequestsA": 6,
+  "totalRequestsB": 9
+}

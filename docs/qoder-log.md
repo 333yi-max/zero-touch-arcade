@@ -36,7 +36,22 @@
 复现顺序上踩了一个坑：权限是浏览器级的，上一次跑完 denied 会留在这个 profile 里，下一次跑「加载态」场景
 会直接落到错误卡片。脚本开头必须先把权限重置成 granted，否则截图是错的。
 
-**提交**：`3ef98dc`。**待办**：重新发布（链接不变），回填线上验收。
+### 发布与线上验收（2026-11-23）
+
+新 actionId `87611676-737c-4774-8a35-1a87c8115ffa` 发到同一 siteId，
+`published: true / committed: true / access_mode: public`，链接不变，线上资产换成 `index-BJABjniB.js`（324.9 kB）。
+
+清缓存 + 公网无痕复验：
+
+- 8 条资源全 200（首页 / JS / CSS / 模型 / wasm js / wasm / nosimd wasm / favicon），`badResponses` 为空
+- 首屏：ttfb 1002 ms / DOMContentLoaded 1401 ms / load 1417 ms —— 这是**清缓存**口径；
+  之前的 460 ms 是热缓存，两个数不该混着说
+- 加载态 `人脸=true / 手势=false`；拒绝权限后校准页、游戏页都出「摄像头没打开」，
+  游戏页「正在加载」出现 0 次；375 px `scrollWidth = 375`
+- 截图 `22-live-loading-fixed.png`、`23-live-permission-fixed.png`、`24-live-375-fixed.png`，
+  原始证据 `live-audit-day4-fix.json`
+
+**提交**：`3ef98dc`（修复）、`7cf037a`（回填）、`284d70b`（README 仓库地址），本次文档与站点文件另提交。
 
 ---
 
