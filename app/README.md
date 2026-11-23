@@ -144,6 +144,10 @@ Day 4 加了：`src/calibration/`（steps / sampling / result / sequencer / stor
 2. 游戏本体：光标命中判定与计分。
 3. 论坛帖「我改了什么」从 [docs/qoder-log.md](../docs/qoder-log.md) 取素材（Day 3 的两个线上 bug、Day 4 的校准与发布各有记录，含提交号）。
 
+## 源码仓库
+
+<https://github.com/333yi-max/zero-touch-arcade>（公开）。线上站点链接见下一节。
+
 ## 部署到 Qoder Sites
 
 **线上地址（公开，免登录）**：<https://zero-touch-arcade-isyzlt2g2ce.qoder.zone>
