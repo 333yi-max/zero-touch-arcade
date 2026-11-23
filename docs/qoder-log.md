@@ -107,6 +107,47 @@ npm run build ✅（js 410.49 kB / gzip 125.40 kB，css 31.43 kB / 6.79 kB）；
 
 **提交**：`c26cb55`。
 
+### 第 5 轮 · 游戏 5「吹蜡烛」
+
+**改了什么**：
+- 新纯逻辑 `src/game/candleGame.ts`：一排 5 支蜡烛，张嘴（jaw 电平）累计 400ms 吹灭最左一支，吹灭 +20；
+  2 秒内连吹下一支 +10 奖励；60 秒内吹完 5 支结束（done），没吹完按已灭数结算（time）。
+  **无暂停相位**——嘴是主操作，不能兼职暂停键（设计拍板，与计划一致）；60 秒短，HUD 只放音效开关。
+  吹气进度半速衰减（不张嘴时按 0.5× 速率回落）：持续张嘴最快，断续吹也吹得灭（无障碍友好）；吹灭瞬间
+  进度清零、余量不结转；单步 dt 钳位 100ms（切后台回来不会瞬间吹灭）；`candles` 数组浅拷贝隔离帧间状态。
+- 新演示 AI `src/game/demoCandle.ts`：整体接管输入——ready 延迟 1.5 秒点头开局，playing 按 1100ms 周期
+  张嘴（500ms 吹 / 600ms 歇，净进度 +200ms/周期 → 约 1.3 秒吹灭一支），整局模拟 5.6 秒吹完 5 支、140 分。
+- 新 hook `src/hooks/useCandleGame.ts`（demo 标志整体切换输入源，latch = {confirm 脉冲, blow 电平}）
+  + 画布渲染 `src/components/CandleGame.tsx`（烛身渐变+桌面阴影、火焰呼吸摆动、当前目标进度环+右侧风线、
+  熄灭烟圈、吹灭瞬间三层扩散烟圈+飘字，reduced-motion 下火焰静态、无进度环）。
+- 全站集成：machine GameId 加 'candle'；bestScores 加可选字段 `candle`（旧存档缺失按 null 兼容）；
+  shareCard GAME_NAMES；sound 加 extinguishSound（高→低「呼」滑音，连吹加一声清亮叮）；gameSpeech 加
+  candleCountdown/candleGameOver；SelectScreen 第五张卡（Flame 图标，ANNOUNCE/提示「四个→五个」）；
+  GameScreen CandleSession + CandleHudBar（得分/已灭 x/5/连吹徽章 + 音效开关，无暂停按钮）；
+  ResultCard 统计行（吹灭 x/5 · 连吹 y 次）；shots.mjs 加 game-candle / game-candle-playing
+  （WAIT:7500）/ game-candle-over（WAIT:11500）路由。
+
+**发现 / 根因 / 修法**：
+1. CandleGame 渲染器引 `GAME_WIDTH/GAME_HEIGHT` 但 candleGame.ts 没导出（这两个常量在 star/whack 模块里
+   是各游戏自带的）。修法：candleGame.ts 补导出 800×600，与其它游戏模块一致。
+2. 单测算术坑（前 4 条测试全踩一遍才过）：advance() 按 16ms 步进会跨过多拍点（352≠350）→ 改直接 step 传
+   dt=100/50；断续吹的净进度周期算错（吹 500/歇 500 时 1600ms 内净 +800，实际吹灭在 ~960ms）→ 按
+   「吹 dt 净 +dt、歇 dt 净 −0.5dt」重算边界 800–1600ms；衰减测试忘了 MAX_STEP_MS=100 钳位（1000ms 一步
+   被钳成 100ms）；时间到测试缺 ready→countdown 的 confirm 上升沿。
+3. 演示 AI 初版 1000ms 周期（吹 500/歇 500）净进度 +250/周期，整局 4.4 秒就吹完——太快，倒计时占大头、
+   对局一眨眼。修法：周期改 1100ms（吹 500/歇 600），整局 5.6 秒；演示结果卡截图也稳定可拍。
+4. 设计拍板记录：吹蜡烛**没有暂停**、衰减半速（见上）；**没有持续吹气音**——持续合成音会盖过别的
+   反馈且烦人，吹灭瞬间给声音就够。摄像头真人张嘴链路未验（无头环境验不了）——写入遗留待办，
+   演示整局已验证能吹完，不假装验过真人。
+
+**验证**：npm test 191/191 ✅（新增 candleGame 15 条 + demoCandle 3 条，173→191）；npm run build ✅
+（js 421.93 kB / gzip 127.35 kB，css 31.43 kB / 6.79 kB）；截图 78–85：78/79 吹蜡烛 1280 ready 与对局
+（已灭 3/5、飘字「+20 连吹 +10」、连吹徽章）、80/81 同档 375 无溢出、82 结果卡（得分 140、吹灭 5/5、
+连吹 4 次、最佳 140，与整局模拟一致）、83/84 选游戏页五卡 1280/375、85 reduced-motion 档（火焰静态、
+无进度环动画）；网络 4xx/5xx = 0、console error = 0 ✅。
+
+**提交**：`回填`。
+
 ---
 
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡

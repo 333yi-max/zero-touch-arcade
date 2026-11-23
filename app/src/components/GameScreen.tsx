@@ -10,6 +10,8 @@ import { useSnakeGame } from '../hooks/useSnakeGame';
 import type { SnakeGameHud } from '../hooks/useSnakeGame';
 import { useWhackGame } from '../hooks/useWhackGame';
 import type { WhackGameHud } from '../hooks/useWhackGame';
+import { useCandleGame } from '../hooks/useCandleGame';
+import type { CandleGameHud } from '../hooks/useCandleGame';
 import { CameraSource } from '../input/cameraSource';
 import type { Calibration, GestureEvent, InputState, RawFrame } from '../input/types';
 import { ScriptedSource } from '../input/scriptedSource';
@@ -35,9 +37,12 @@ import SnakeGame from './SnakeGame';
 import type { SnakeFx } from './SnakeGame';
 import WhackGame from './WhackGame';
 import type { WhackFx } from './WhackGame';
+import CandleGame, { candleFlamePos } from './CandleGame';
+import type { CandleFx } from './CandleGame';
 import { START_LIVES } from '../game/starGame';
 import { BOOST_MS } from '../game/snakeGame';
 import { HOLE_POSITIONS, MAX_MISSES, TARGET_HITS, whackPathPoint } from '../game/whackGame';
+import { CANDLE_COUNT } from '../game/candleGame';
 import TopBar from './TopBar';
 import { Info, Lightbulb, PlayCircle, Sparkles, Video, Volume2, VolumeX } from 'lucide-react';
 
@@ -136,7 +141,9 @@ export default function GameScreen({
               ? '节奏点头'
               : gameId === 'snake'
                 ? '霓虹贪吃蛇'
-                : '打地鼠'
+                : gameId === 'whack'
+                  ? '打地鼠'
+                  : '吹蜡烛'
         }
         onBack={onBack}
         right={
@@ -190,6 +197,16 @@ export default function GameScreen({
           onBack={onBack}
           onSwitchGame={onSwitchGame}
         />
+      ) : gameId === 'candle' ? (
+        <CandleSession
+          mode={mode}
+          gestureState={state}
+          gestureEvents={events}
+          frame={frame}
+          camera={camera}
+          onBack={onBack}
+          onSwitchGame={onSwitchGame}
+        />
       ) : (
         <SnakeSession
           mode={mode}
@@ -226,7 +243,7 @@ export default function GameScreen({
   );
 }
 
-// ———— 四个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
+// ———— 五个游戏的会话组件：各自持有自己的纯逻辑 hook、音效与覆盖层 ————
 
 interface SessionProps {
   mode: Mode;
@@ -929,6 +946,148 @@ function WhackSession({
   );
 }
 
+function CandleSession({
+  mode,
+  gestureState,
+  gestureEvents,
+  frame,
+  camera,
+  onBack,
+  onSwitchGame,
+}: SessionProps) {
+  // 演示模式的虚拟玩家整体接管输入（点头开局 + 节拍张嘴）；摄像头模式走真实手势
+  const { gameRef, latchRef, hud, events: gameEvents, replay } = useCandleGame({
+    demo: mode === 'demo',
+    replayOnConfirm: mode === 'camera',
+  });
+
+  const soundsRef = useRef<GameSounds | null>(null);
+  const speakerRef = useRef<GameSpeaker | null>(null);
+  const fxRef = useRef<CandleFx>({
+    extinguishUntil: 0,
+    extinguishAt: null,
+    extinguishBonus: false,
+    shakeUntil: 0,
+    shakePower: 0,
+    texts: [],
+  });
+  const prevPhaseRef = useRef<CandleGameHud['phase']>('ready');
+  const [muted, setMuted] = useState<boolean>(() => readMuted());
+
+  useEffect(() => {
+    const sounds = createGameSounds();
+    const speaker = createGameSpeaker();
+    sounds.setMuted(readMuted());
+    soundsRef.current = sounds;
+    speakerRef.current = speaker;
+    return () => {
+      soundsRef.current = null;
+      speakerRef.current = null;
+      sounds.dispose();
+    };
+  }, []);
+
+  // 手势锁存：点头脉冲 + 张嘴电平（blow 就是吹气，没有暂停语义）
+  const latch = latchRef.current;
+  if (gestureState.confirm || gestureEvents.includes('confirm')) latch.confirm = true;
+  if (gestureState.pause || gestureEvents.includes('pause')) latch.blow = true;
+
+  // 事件 → 声音 + 视觉特效：每个音效都有画面替身，听障用户不靠声音
+  useEffect(() => {
+    if (gameEvents.length === 0) return;
+    const sounds = soundsRef.current;
+    const fx = fxRef.current;
+    const now = performance.now();
+    for (const e of gameEvents) {
+      switch (e.type) {
+        case 'extinguish': {
+          sounds?.extinguishSound(e.bonus > 0);
+          const { x, y } = candleFlamePos(e.index);
+          fx.extinguishUntil = now + 700;
+          fx.extinguishAt = { x, y };
+          fx.extinguishBonus = e.bonus > 0;
+          fx.texts = [
+            ...fx.texts.slice(-5),
+            {
+              x,
+              y: y - 40,
+              text: e.bonus > 0 ? `+${e.points} 连吹 +${e.bonus}` : `+${e.points}`,
+              color: e.bonus > 0 ? '#58c4ff' : '#ffd60a',
+              until: now + 900,
+            },
+          ];
+          fx.shakeUntil = now + 200;
+          fx.shakePower = 0.25;
+          break;
+        }
+        case 'countdown':
+          if (e.remaining === 3) sounds?.startSound();
+          break;
+        case 'gameOver':
+          sounds?.endSound();
+          break;
+      }
+    }
+  }, [gameEvents]);
+
+  // 语音只报相位切换，不逐帧叫
+  useEffect(() => {
+    const speaker = speakerRef.current;
+    if (!speaker) return;
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = hud.phase;
+    if (hud.phase === prev) return;
+    if (hud.phase === 'countdown') speaker.candleCountdown();
+    else if (hud.phase === 'over') speaker.candleGameOver(hud.score);
+  }, [hud.phase, hud.score]);
+
+  // 点头在游戏中无效（吹气才是操作），只在开始前/结束后给反馈
+  useEffect(() => {
+    if (gestureEvents.includes('confirm') && (hud.phase === 'ready' || hud.phase === 'over')) {
+      soundsRef.current?.confirmSound(frame);
+    }
+  }, [gestureEvents, frame, hud.phase]);
+
+  const toggleMuted = (): void => {
+    const next = !muted;
+    setMuted(next);
+    writeMuted(next);
+    soundsRef.current?.setMuted(next);
+  };
+
+  const overlayNode =
+    hud.phase === 'over' ? (
+      <ResultCard
+        result={{ game: 'candle', stats: hud.stats }}
+        onReplay={replay}
+        onSwitchGame={onSwitchGame}
+        onHome={onBack}
+      />
+    ) : hud.phase === 'ready' ? (
+      <ReadyCard onStart={() => (latch.confirm = true)} />
+    ) : null;
+
+  return (
+    <SessionLayout
+      showCamera={mode === 'camera'}
+      camera={camera}
+      cameraPaused={false}
+      frame={frame}
+      hud={<CandleHudBar hud={hud} muted={muted} onMuteToggle={toggleMuted} />}
+      tips={GAME_TIPS.candle}
+    >
+      <CandleGame
+        gameRef={gameRef}
+        fxRef={fxRef}
+        overlay={overlayNode}
+        frameClass={
+          mode === 'camera' ? 'max-h-[36vh] xl:max-h-[80vh]' : 'max-h-[60vh] xl:max-h-[80vh]'
+        }
+      />
+    </SessionLayout>
+  );
+}
+
 // ———— 会话布局外壳：xl 两栏（左画布 / 右 HUD+预览+提示），窄屏上下堆叠 ————
 interface SessionLayoutProps {
   showCamera: boolean;
@@ -973,11 +1132,12 @@ function SessionLayout({
   );
 }
 
-const GAME_TIPS: Record<'star' | 'rhythm' | 'snake' | 'whack', readonly string[]> = {
+const GAME_TIPS: Record<'star' | 'rhythm' | 'snake' | 'whack' | 'candle', readonly string[]> = {
   star: ['转头左右移动挡板', '金色星星分值更高', '点头开始，张嘴暂停'],
   rhythm: ['看收缩环，环与目标圈重合时点头', '连击只数 Perfect，Good / Miss 都清零'],
   snake: ['转头控制方向，小蛇不会停', '连续吃光球叠连击倍率', '点头开启闪耀，双倍得分', '张嘴暂停'],
   whack: ['转头沿蛇形路径移动准星', '对准冒头的地鼠点头敲下', '金色地鼠分值更高', '敲空断连击，地鼠缩回算漏', '张嘴暂停'],
+  candle: ['对准蜡烛张嘴吹气', '累计张嘴约半秒吹灭一支', '2 秒内连吹下一支有奖励', '60 秒内吹完全部'],
 };
 
 function TipsCard({ tips }: { tips: readonly string[] }) {
@@ -1234,6 +1394,43 @@ function WhackHudBar({ hud, muted, onMuteToggle, onPauseToggle }: WhackHudBarPro
         >
           {hud.phase === 'paused' ? '继续' : '暂停'}
         </button>
+      </div>
+
+      <span className="sr-only" aria-live="polite">
+        {hud.phase === 'countdown' ? `倒计时 ${hud.countdownRemaining}` : ''}
+      </span>
+    </div>
+  );
+}
+
+interface CandleHudBarProps extends MutedControls {
+  hud: CandleGameHud;
+}
+
+function CandleHudBar({ hud, muted, onMuteToggle }: CandleHudBarProps) {
+  return (
+    <div className="card-surface flex flex-wrap items-center gap-x-5 gap-y-3 rounded-card border-2 border-edge px-5 py-3 shadow-card xl:flex-col xl:items-stretch">
+      <p className="text-2xl font-black tabular-nums">
+        <span aria-live="polite" aria-label={`得分 ${hud.score}`}>
+          得分 {hud.score}
+        </span>
+      </p>
+
+      <p className="text-lg font-bold tabular-nums text-dim">
+        已灭 {hud.extinguished} / {CANDLE_COUNT}
+      </p>
+
+      {hud.chained > 0 ? (
+        <p
+          aria-live="polite"
+          className="rounded-full bg-accent px-3 py-1 text-base font-black text-accent-fg"
+        >
+          连吹 {hud.chained}
+        </p>
+      ) : null}
+
+      <div className="ml-auto flex gap-3 xl:ml-0 xl:mt-1">
+        <MuteButton muted={muted} onMuteToggle={onMuteToggle} />
       </div>
 
       <span className="sr-only" aria-live="polite">

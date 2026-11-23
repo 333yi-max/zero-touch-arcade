@@ -36,6 +36,11 @@ const ROUTES = {
   'game-snake-playing': [['演示模式'], ['霓虹贪吃蛇'], ['开始游戏']],
   // 打地鼠演示玩家会自己点头开局，等它打完倒计时进入对局再拍
   'game-whack-playing': [['演示模式'], ['打地鼠'], ['WAIT:6500']],
+  // 吹蜡烛演示玩家自己点头开局（挂载后 1.5 秒）+ 3 秒倒计时，对局中期拍
+  'game-candle': [['演示模式'], ['吹蜡烛']],
+  'game-candle-playing': [['演示模式'], ['吹蜡烛'], ['WAIT:7500']],
+  // 演示玩家 1.5s 点头 + 3s 倒计时 + ~5.6s 吹完 → 结果卡
+  'game-candle-over': [['演示模式'], ['吹蜡烛'], ['WAIT:11500']],
 };
 
 function specsFromArgs(argv) {

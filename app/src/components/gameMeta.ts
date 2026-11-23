@@ -1,4 +1,4 @@
-import { AudioLines, Hammer, Star, Worm, type LucideIcon } from 'lucide-react';
+import { AudioLines, Flame, Hammer, Star, Worm, type LucideIcon } from 'lucide-react';
 import type { GameId } from '../state/machine';
 
 export interface GameMeta {
@@ -42,5 +42,13 @@ export const GAMES: readonly GameMeta[] = [
     time: '60 秒或敲中 25 个',
     who: '喜欢眼疾手快',
     icon: Hammer,
+  },
+  {
+    id: 'candle',
+    name: '吹蜡烛',
+    line: '张嘴吹气，吹灭一排蜡烛',
+    time: '60 秒内吹完 5 支',
+    who: '想练嘴部控制',
+    icon: Flame,
   },
 ];

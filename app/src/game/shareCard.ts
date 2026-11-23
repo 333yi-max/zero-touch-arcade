@@ -21,6 +21,7 @@ const GAME_NAMES: Record<GameId, string> = {
   rhythm: '节奏点头',
   snake: '霓虹贪吃蛇',
   whack: '打地鼠',
+  candle: '吹蜡烛',
 };
 
 const BG_TOP = '#0a0f1f';

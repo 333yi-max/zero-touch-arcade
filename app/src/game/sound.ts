@@ -26,6 +26,7 @@ export interface GameSounds {
   boostSound(): void;
   whackHitSound(gold: boolean, multiplier: number): void;
   whackRetreatSound(): void;
+  extinguishSound(bonus: boolean): void;
   setTracking(cursorX: number, active: boolean): void;
   setMuted(muted: boolean): void;
   dispose(): void;
@@ -183,6 +184,11 @@ export function createGameSounds(): GameSounds {
     whackRetreatSound(): void {
       // 缩回：轻轻下滑一下，和漏星的沉重感区分开
       tone(300, 0.09, 0.07, { slideTo: 220, type: 'sine' });
+    },
+    extinguishSound(bonus: boolean): void {
+      // 「呼」：从高往低滑的白噪声感用滤波扫频近似；连吹加一声清亮叮
+      tone(880, 0.18, 0.14, { slideTo: 220, type: 'sawtooth' });
+      if (bonus) tone(1568, 0.1, 0.1, { type: 'triangle', when: 0.1 });
     },
     setTracking(cursorX: number, active: boolean): void {
       const magnitude = Math.min(1, Math.abs(cursorX));

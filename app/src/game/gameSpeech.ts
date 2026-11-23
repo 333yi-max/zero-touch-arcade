@@ -13,6 +13,7 @@ export const GAME_SPEECH = {
   rhythmDone: '完成！',
   snakeCountdown: '准备，转头控制小蛇，吃光球得分。',
   whackCountdown: '准备，转头移动准星，点头敲地鼠。',
+  candleCountdown: '准备，张嘴吹灭蜡烛。',
 } as const;
 
 export interface GameSpeaker {
@@ -26,6 +27,8 @@ export interface GameSpeaker {
   snakeGameOver(score: number): void;
   whackCountdown(): void;
   whackGameOver(score: number): void;
+  candleCountdown(): void;
+  candleGameOver(score: number): void;
 }
 
 export function createGameSpeaker(): GameSpeaker {
@@ -43,5 +46,7 @@ export function createGameSpeaker(): GameSpeaker {
     snakeGameOver: (score) => speaker.speak(`${GAME_SPEECH.timeUp}得分 ${score}。`),
     whackCountdown: () => speaker.speak(GAME_SPEECH.whackCountdown),
     whackGameOver: (score) => speaker.speak(`${GAME_SPEECH.gameOver}得分 ${score}。`),
+    candleCountdown: () => speaker.speak(GAME_SPEECH.candleCountdown),
+    candleGameOver: (score) => speaker.speak(`${GAME_SPEECH.gameOver}得分 ${score}。`),
   };
 }
