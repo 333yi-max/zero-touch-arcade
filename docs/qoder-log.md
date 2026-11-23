@@ -339,6 +339,29 @@ Qoder 的 10 轮报告写的是 console error 0，但我用 CDP 把五个游戏�
 
 ---
 
+## 2026-11-24 · Day 7 发布：冲刺终版上线（含 AudioContext 修复）
+
+所有者拍板发布。发布前重建 dist（`npm run build` 全绿，192 测试全绿），产物与所有者复查构建同哈希：
+`assets/index-D77sciq2.js` 430.12 kB（gzip 131.64 kB）+ `assets/index-Ckpy67FK.css` 32.42 kB（gzip 6.97 kB），
+即包含「切换游戏时 AudioContext 已关闭异常」修复（`7c24903`）的版本。
+
+发布参数（沿用 README 既定流程）：`prepare_site` projectRoot = `D:\JD\零触控游乐场\app`、webDirectory = `dist`、
+`spa: true`、displayName = 零触控游乐场、slug = zero-touch-arcade；**新 actionId** `c743a801-27dc-4cea-bce8-737222057d35`，
+沿用现有 siteId `01a1ff09-2bd8-74b5-bde7-6929149201f5`（projectId `01a1ff09-2bd4-7a1f-9a26-57cdba86cdc6`），
+链接不变：<https://zero-touch-arcade-isyzlt2g2ce.qoder.zone>，访问策略保持 public（发布前后各核一次）。
+
+线上验收（真实运行）：
+- curl 四资源全 200：`/` 57.8 kB、favicon、JS 430.1 kB（即 `index-D77sciq2.js`）、CSS 32.4 kB。
+- puppeteer 真浏览器（SHOTS_URL 指向线上）：首页/开发日志/选游戏/接星星页 1280 与首页 375 共 5 张
+  截图 `116–120`，网络 4xx/5xx = 0、console error = 0。
+- 375px 横向溢出实测：首页与选游戏页 scrollWidth = 375 = innerWidth，无溢出。
+- 游戏切换压力路径（AudioContext 反复开合）由所有者的 CDP 复查覆盖：同一构建哈希本地实测 836 → 0，
+  线上 bundle 与其字节一致，直接复用该结论，不在线上一字不改地重复一遍。
+
+**提交**：`__待回填__`。
+
+---
+
 ## 2026-11-24 · Day 6：选游戏页 + 游戏 2「节奏点头」+ 统一结果卡与分享卡
 
 交付内容（提交 `c95a654`）：状态机加 `select` 屏与 `gameId`，删掉 `result` 屏和 `game_finished`/`replay` 两个死事件；

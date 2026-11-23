@@ -39,7 +39,7 @@ React 只做外壳。引擎输出的 `cursorX` 实时控制挡板/准星（接�
 游戏内不设暂停。音效全部 Web Audio 合成，零音频文件；每个声音都有画面替身，
 `prefers-reduced-motion` 下粒子/红光/发光自动降级。
 
-当前构建体积：JS 430.06 kB（gzip 131.62 kB）+ CSS 32.42 kB（gzip 6.97 kB），
+当前构建体积：JS 430.12 kB（gzip 131.64 kB）+ CSS 32.42 kB（gzip 6.97 kB），
 加上本地 wasm（19 MB）与模型（3.6 MB），`dist/` 共约 23 MB。测试 192 条（见下）。
 
 状态机在 [src/state/machine.ts](src/state/machine.ts)，`start → calibration → select → game`，`devlog` 可从首页直达：
@@ -254,6 +254,12 @@ console error = 0、4xx = 0；375 px 无横向溢出。截图 30–31 见施工�
 结果卡 4 秒稳定、分享卡 PNG 251 KB 下载、节奏点头 A / 88% / 1400、Web Share 优先路径、
 `zt.best.v1` 两个游戏都在、坏数据不崩、375 px 三屏无溢出、console error = 0、4xx/5xx = 0。
 截图 39–45 见施工日志与 docs/shots。
+
+2026-11-24 重新发布 Day 7 终版构建（五个游戏 + 开发日志页 + AudioContext 修复，新 actionId
+`c743a801-27dc-4cea-bce8-737222057d35`，同一 siteId，链接不变，`access_mode: public`）：
+线上资产 `assets/index-D77sciq2.js`（430.1 kB）+ `index-Ckpy67FK.css`。线上验收：curl 四资源全 200；
+真浏览器 5 张截图（116–120）网络 4xx/5xx = 0、console error = 0；375 px 首页/选游戏无横向溢出。
+截图 116–120 见施工日志与 docs/shots。
 
 站点是 SPA，构建产物是纯静态文件，`vite.config.ts` 已设 `base: './'`，资源走相对路径，因此可以挂在任意子路径下。
 
